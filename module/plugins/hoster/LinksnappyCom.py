@@ -10,7 +10,7 @@ from module.plugins.internal.utils import json
 class LinksnappyCom(MultiHoster):
     __name__    = "LinksnappyCom"
     __type__    = "hoster"
-    __version__ = "0.15"
+    __version__ = "0.14"
     __status__  = "testing"
 
     __pattern__ = r'https?://(?:[^/]+\.)?linksnappy\.com'
@@ -23,8 +23,7 @@ class LinksnappyCom(MultiHoster):
 
     __description__ = """Linksnappy.com multi-hoster plugin"""
     __license__     = "GPLv3"
-    __authors__     = [("stickell",     "l.stickell@yahoo.it"),
-                       ("Bilal Ghouri", None                 )]
+    __authors__     = [("stickell", "l.stickell@yahoo.it")]
 
 
     def handle_premium(self, pyfile):
@@ -34,7 +33,7 @@ class LinksnappyCom(MultiHoster):
                                   'username': self.account.user,
                                   'password': self.account.get_login('password')})
 
-        r = self.load("https://linksnappy.com/api/linkgen",
+        r = self.load("http://linksnappy.com/api/linkgen",
                       post={'genLinks': json_params})
 
         self.log_debug("JSON data: " + r)

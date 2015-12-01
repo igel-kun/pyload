@@ -171,3 +171,4 @@ class TurbobitNet(SimpleHoster):
 
 
 getInfo = create_getInfo(TurbobitNet)
+

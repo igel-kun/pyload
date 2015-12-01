@@ -27,6 +27,7 @@ class FileboomMe(SimpleHoster):
     NAME_PATTERN    = r'<i class="icon-download"></i>\s*(?P<N>.+?)\s*<'
     SIZE_PATTERN    = r'File size: (?P<S>[\d.,]+) (?P<U>[\w^_]+)'
     OFFLINE_PATTERN = r'>This file is no longer available'
+    PREMIUM_ONLY_PATTERN = r'This file is available.*only for premium members'
 
     WAIT_PATTERN = r'<div class="tik-tak">([\d:]+)'
     LINK_PATTERN = r'/file/url\.html\?file=\w+'
@@ -41,7 +42,9 @@ class FileboomMe(SimpleHoster):
 
 
     def handle_free(self, pyfile):
-        post_url = urlparse.urljoin(pyfile.url, "file/" + self.info['pattern']['ID'])
+        self.check_errors()
+        self.log_debug("joining " + pyfile.url + " & /file/" +  self.info['pattern']['ID'])
+        post_url = urlparse.urljoin(pyfile.url, "/file/" + self.info['pattern']['ID'])
 
         m = re.search(r'data-slow-id="(\w+)"', self.data)
         if m is not None:

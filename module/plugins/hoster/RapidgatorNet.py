@@ -44,9 +44,9 @@ class RapidgatorNet(SimpleHoster):
 
     PREMIUM_ONLY_PATTERN = r'You can download files up to|This file can be downloaded by premium only<'
     ERROR_PATTERN        = r'You have reached your (?:daily|hourly) downloads limit'
-    WAIT_PATTERN         = r'(Delay between downloads must be not less than|Try again in).+'
+    WAIT_PATTERN         = r'(Delay between downloads must be not less than|Try again in|file at a time in free mode).+'
 
-    LINK_FREE_PATTERN = r'return \'(http://\w+.rapidgator.net/.*)\';'
+    LINK_FREE_PATTERN = r"return '(http://\w+.rapidgator.net/.*)';"
 
     RECAPTCHA_PATTERN  = r'"http://api\.recaptcha\.net/challenge\?k=(.*?)"'
     ADSCAPTCHA_PATTERN = r'(http://api\.adscaptcha\.com/Get\.aspx[^"\']+)'
@@ -104,6 +104,8 @@ class RapidgatorNet(SimpleHoster):
 
 
     def handle_free(self, pyfile):
+        self.check_errors()
+
         jsvars = dict(re.findall(self.JSVARS_PATTERN, self.data))
         self.log_debug(jsvars)
 
@@ -114,6 +116,8 @@ class RapidgatorNet(SimpleHoster):
             jsvars.get('startTimerUrl', '/download/AjaxStartTimer'), jsvars['fid'])
         jsvars.update(self.get_json_response(url))
 
+        self.log_debug("updated jvars to:")
+        self.log_debug(jsvars)
         self.wait(jsvars.get('secs', 45), False)
 
         url = "http://rapidgator.net%s?sid=%s" % (
@@ -146,6 +150,14 @@ class RapidgatorNet(SimpleHoster):
             else:
                 self.captcha.correct()
 
+        # retry link detection
+        m = re.search(self.LINK_FREE_PATTERN, self.data)
+        if m is not None:
+            self.link = m.group(1)
+        else:
+            self.error(_("Download link not found"))
+
+
 
     def handle_captcha(self):
         for klass in (AdsCaptcha, ReCaptcha, SolveMedia):
@@ -158,7 +170,7 @@ class RapidgatorNet(SimpleHoster):
         res = self.load(url)
         if not res.startswith('{'):
             self.retry()
-        self.log_debug(url, res)
+        self.log_debug("JSON update from %s: %s" % (url, res))
         return json.loads(res)
 
 

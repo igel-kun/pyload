@@ -83,7 +83,7 @@ class Keep2ShareCc(SimpleHoster):
 
         m = re.search(self.LINK_FREE_PATTERN, self.data)
         if m is None:
-            self.handle_captcha()
+            self.handle_captcha(pyfile.url)
             self.wait(31)
             # get the uniqueId from the html code
             m = re.search(self.UNIQUE_ID_PATTERN, self.data)
@@ -103,19 +103,19 @@ class Keep2ShareCc(SimpleHoster):
         self.log_debug("download link: %s" % self.link)
 
 
-    def handle_captcha(self):
+    def handle_captcha(self, url):
         post_data = {'free'               : 1,
                      'freeDownloadRequest': 1,
                      'uniqueId'           : self.fid,
                      'yt0'                : ''}
 
         m = re.search(r'id="(captcha-form)"', self.data)
-        self.log_debug("Captcha form found", m)
+        self.log_debug("Captcha form found", m.group(0))
 
         m = re.search(self.CAPTCHA_PATTERN, self.data)
-        self.log_debug("CAPTCHA_PATTERN found %s" % m)
         if m is not None:
-            captcha_url = urlparse.urljoin("http://keep2s.cc/", m.group(1))
+            self.log_debug("CAPTCHA_PATTERN found: %s" % m.group(0))
+            captcha_url = urlparse.urljoin(url, m.group(1))
             post_data['CaptchaForm[code]'] = self.captcha.decrypt(captcha_url)
         else:
             recaptcha = ReCaptcha(self)
@@ -123,9 +123,11 @@ class Keep2ShareCc(SimpleHoster):
             post_data.update({'recaptcha_challenge_field': challenge,
                               'recaptcha_response_field' : response})
 
+        self.log_debug('sending data %s' % str(post_data))
         self.data = self.load(self.pyfile.url, post=post_data)
 
         if 'verification code is incorrect' in self.data:
+            self.log_debug('answer was %s' % self.data)
             self.retry_captcha()
         else:
             self.captcha.correct()

@@ -1,11 +1,30 @@
 # -*- coding: utf-8 -*-
 
+"""
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License,
+    or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+    See the GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, see <http://www.gnu.org/licenses/>.
+    
+    @author: jeix
+"""
+
+from os.path import join
+from os.path import exists
+from os import makedirs
 import re
-import socket
-import struct
 import sys
 import time
-
+import socket
+import struct
 from select import select
 
 from module.plugins.internal.Hoster import Hoster
@@ -31,13 +50,12 @@ class Xdcc(Hoster):
         self.timeout = 30
         self.multiDL = False
 
-
     def process(self, pyfile):
         #: Change request type
         self.req = self.pyload.requestFactory.getRequest(self.classname, type="XDCC")
 
         self.pyfile = pyfile
-        for _i in xrange(0, 3):
+        for i in range(0, 3):
             try:
                 nmn = self.do_download(pyfile.url)
                 self.log_debug("Download of %s finished." % nmn)
@@ -54,15 +72,19 @@ class Xdcc(Hoster):
                     self.wait(300)
                     continue
 
-                self.fail(_("Failed due to socket errors. Code: %d") % errno)
+                self.fail("Failed due to socket errors. Code: %d" % errno)
 
-        self.fail(_("Server blocked our ip, retry again later manually"))
-
+        self.fail("Server blocked our ip, retry again later manually")
 
     def do_download(self, url):
         self.pyfile.setStatus("waiting")  #: Real link
 
-        m = re.match(r'xdcc://(.*?)/#?(.*?)/(.*?)/#?(\d+)/?', url)
+        download_folder = self.config['general']['download_folder']
+        location = join(download_folder, self.pyfile.package().folder.decode(sys.getfilesystemencoding()))
+        if not exists(location):
+            makedirs(location)
+
+        m = re.search(r'xdcc://(.*?)/#?(.*?)/(.*?)/#?(\d+)/?', url)
         server = m.group(1)
         chan = m.group(2)
         bot = m.group(3)
@@ -78,7 +100,7 @@ class Xdcc(Hoster):
         elif ln == 1:
             host, port = temp[0], 6667
         else:
-            self.fail(_("Invalid hostname for IRC Server: %s") % server)
+            self.fail("Invalid hostname for IRC Server (%s)" % server)
 
         #######################
         #: CONNECT TO IRC AND IDLE FOR REAL LINK
@@ -117,7 +139,7 @@ class Xdcc(Hoster):
                 if (dl_time + self.timeout) < time.time():  #@TODO: add in config
                     sock.send("QUIT :byebye\r\n")
                     sock.close()
-                    self.fail(_("XDCC Bot did not answer"))
+                    self.fail("XDCC Bot did not answer")
 
             fdset = select([sock], [], [], 0)
             if sock not in fdset[0]:
@@ -137,7 +159,7 @@ class Xdcc(Hoster):
                     sock.send("PONG %s\r\n" % first[1])
 
                 if first[0] == "ERROR":
-                    self.fail(_("IRC-Error: %s") % line)
+                    self.fail("IRC-Error: %s" % line)
 
                 msg = line.split(None, 3)
                 if len(msg) != 4:
@@ -168,7 +190,7 @@ class Xdcc(Hoster):
                 if self.pyload.debug:
                     self.log_debug(msg['origin'], msg['text'])
 
-                if "You already requested that pack" in msg['text']:
+                if "You already requested that pack" in msg["text"]:
                     retry = time.time() + 300
 
                 if "you must be on a known channel to request a pack" in msg['text']:

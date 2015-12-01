@@ -79,3 +79,4 @@ class UploadableCh(SimpleHoster):
 
 
 getInfo = create_getInfo(UploadableCh)
+

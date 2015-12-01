@@ -82,3 +82,4 @@ class VeehdCom(Hoster):
             self.error(_("Embedded video url not found"))
 
         return m.group(1)
+
