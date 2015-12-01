@@ -226,21 +226,14 @@ class Plugin(object):
             set_cookies(req.cj, cookies)
 
         #@TODO: Move to network in 0.4.10
-        if not redirect:
-            req.http.c.setopt(pycurl.FOLLOWLOCATION, 0)
+        if redirect:
+            req.http.c.setopt(pycurl.FOLLOWLOCATION, 1)
+            req.http.c.setopt(pycurl.POSTREDIR, pycurl.REDIR_POST_ALL)
 
         elif type(redirect) is int:
             req.http.c.setopt(pycurl.MAXREDIRS, redirect)
 
         html = req.load(url, get, post, ref, bool(cookies), just_header, multipart, decode is True)  #@TODO: Fix network multipart in 0.4.10
-
-        #@TODO: Move to network in 0.4.10
-        if not redirect:
-            req.http.c.setopt(pycurl.FOLLOWLOCATION, 1)
-
-        elif type(redirect) is int:
-            maxredirs = self.get_config("maxredirs", default=5, plugin="UserAgentSwitcher")
-            req.http.c.setopt(pycurl.MAXREDIRS, maxredirs)
 
         #@TODO: Move to network in 0.4.10
         if decode:

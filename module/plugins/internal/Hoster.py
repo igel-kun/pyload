@@ -103,6 +103,31 @@ class Hoster(Base):
                 raise Fail(encode(e))
 
 
+    # analyze a given header and return whether it's a direct download
+    def isdownload_from_header(self, header):
+        if 'content-disposition' in header:
+            return True;
+
+        elif header.get('content-type') == 'text/html':
+            return False;
+
+        else:
+            mimetype    = ""
+            contenttype = header.get('content-type')
+            extension   = os.path.splitext(parse_name(url))[-1]
+
+            if contenttype:
+                mimetype = contenttype.split(';')[0].strip()
+
+            elif extension:
+                mimetype = mimetypes.guess_type(extension, False)[0] or "application/octet-stream"
+
+            if mimetype and (link or 'html' not in mimetype):
+                return True;
+            else:
+                return False;
+
+
     def isdownload(self, url, resume=None, redirect=True):
         link      = False
         maxredirs = 10
@@ -119,44 +144,31 @@ class Hoster(Base):
         for i in xrange(maxredirs):
             self.log_debug("Redirect #%d to: %s" % (i, url))
 
-            header = self.load(url, just_header=True)
-
-            if 'content-disposition' in header:
-                link = url
-
-            elif header.get('location'):
-                location = self.fixurl(header.get('location'), url)
-                code     = header.get('code')
-
-                if code == 302:
-                    link = location
-
-                elif code == 301:
-                    url = location
-                    if redirect:
-                        continue
-
-                if resume:
-                    url = location
-                    continue
-
-            else:
-                mimetype    = ""
-                contenttype = header.get('content-type')
-                extension   = os.path.splitext(parse_name(url))[-1]
-
-                if contenttype:
-                    mimetype = contenttype.split(';')[0].strip()
-
-                elif extension:
-                    mimetype = mimetypes.guess_type(extension, False)[0] or "application/octet-stream"
-
-                if mimetype and (link or 'html' not in mimetype):
-                    link = url
+            # some hosters (like datafile.com) respond to HEADER requests with an empty header :(
+            # we'll assume for now that this means we don't have a direct download
+            try:
+                header = self.load(url, just_header=True)
+            except error, e:
+                if code == 52:
+                    self.m.log.warning(_("got an empty header as reply, I'll assume this is not a direct download."))
+                    return None
                 else:
-                    link = False
+                    raise
 
-            return link
+            self.log_debug('got header: ' + str(header))
+            if header.get('location'):
+                location = self.fixurl(header.get('location'), unquote=True)
+
+                if header.get('code') in (301, 302):
+                    url = location
+            else:
+                if self.isdownload_from_header(header):
+                    return url;
+                else:
+                    return None;
+
+        return None
+
 
 
     def download(self, url, get={}, post={}, ref=True, cookies=True, disposition=True, resume=None, chunks=None):

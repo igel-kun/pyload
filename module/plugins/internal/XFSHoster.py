@@ -88,6 +88,13 @@ class XFSHoster(SimpleHoster):
 
 
     def handle_free(self, pyfile):
+        # don't download small files
+        minSize = self.pyload.config.getPlugin('XFileSharingPro', 'minSize')
+        self.log_debug('filesize is %s, minimum is %s MB' % (str(pyfile.size), str(minSize)))
+        if pyfile.size and minSize > 0:
+            if pyfile.size < 1024*1024*minSize:
+                self.fail('file is smaller than configured minimum')
+
         for i in xrange(1, 6):
             self.log_debug("Getting download link #%d..." % i)
 
@@ -99,19 +106,21 @@ class XFSHoster(SimpleHoster):
 
             data = self._post_parameters()
 
+            self.req.http.c.setopt(pycurl.REFERER, str(pyfile.url))
             self.data = self.load(pyfile.url, post=data, redirect=False)
 
             m = re.search(r'Location\s*:\s*(.+)', self.req.http.header, re.I)
             if m and not "op=" in m.group(1):
                 break
 
-            m = re.search(self.LINK_PATTERN, self.data, re.S)
+            m = re.search(self.LINK_PATTERN, self.data, re.MULTILINE | re.DOTALL)
             if m is not None:
                 break
         else:
             if 'op' in data:
                 self.error(_("Missing OP data after: ") + data['op'])
 
+        self.log_debug('using link: %s' % m.group(1))
         self.link = m.group(1)
 
 
@@ -176,7 +185,14 @@ class XFSHoster(SimpleHoster):
 
     def _post_parameters(self):
         if self.FORM_PATTERN or self.FORM_INPUTS_MAP:
+            self.log_debug('using local FORM_PATTERN')
             action, inputs = self.parse_html_form(self.FORM_PATTERN or "", self.FORM_INPUTS_MAP or {})
+
+            if inputs:
+                self.log_debug('read: ')
+                for key, val in inputs.iteritems():
+                    self.log_debug('%s' % key)
+                    self.log_debug('%s' % val)
         else:
             action, inputs = self.parse_html_form(input_names={'op': re.compile(r'^download')})
 
@@ -184,6 +200,14 @@ class XFSHoster(SimpleHoster):
             action, inputs = self.parse_html_form('F1')
             if not inputs:
                 self.retry(msg=self.info.get('error') or _("TEXTAREA F1 not found"))
+        
+        if hasattr(self, 'HIDDEN_POST_PARAMETERS'):
+            self.log_debug('parsing additional parameters...')
+            for inputtag in re.finditer(self.HIDDEN_POST_PARAMETERS, self.html):
+                self.log_debug("adding hidden post parameter: %s = %s" % (inputtag.group('id'), inputtag.group('value')))
+                inputs[inputtag.group('id')] = inputtag.group('value')
+        else:
+            self.log_debug('no additional parameters to parse...')
 
         self.log_debug(inputs)
 

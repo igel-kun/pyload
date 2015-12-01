@@ -17,7 +17,7 @@ from module.plugins.internal.utils import (encode, parse_name, parse_size,
 class SimpleHoster(Hoster):
     __name__    = "SimpleHoster"
     __type__    = "hoster"
-    __version__ = "2.07"
+    __version__ = "2.06"
     __status__  = "stable"
 
     __pattern__ = r'^unmatchable$'
@@ -243,6 +243,40 @@ class SimpleHoster(Hoster):
                               ref=False,
                               decode=self.TEXT_ENCODING)
 
+    # this method modifies pyfile.url to the end of a redirect-chain found in the header replies and returns the header found last
+    # TODO: check if the first couple of lines of self.isdownload() are still necessary if we have this method
+    def follow_redirects_and_get_header(self, pyfile, redirect=10):
+        if type(redirect) is int:
+            maxredirs = max(redirect, 1)
+
+        elif redirect:
+            maxredirs = self.get_config("maxredirs", default=maxredirs, plugin="UserAgentSwitcher")
+
+        for i in xrange(maxredirs):
+            self.log_debug("Redirect #%d to: %s" % (i, pyfile.url))
+
+            # some hosters (like datafile.com) respond to HEADER requests with an empty header :(
+            # we'll assume for now that this means we don't have a redirect
+            try:
+                header = self.load(pyfile.url, just_header=True)
+            except error, e:
+                if code == 52:
+                    self.m.log.warning(_("got an empty header as reply, I'll assume this is not a direct download."))
+                    return None
+                else:
+                    raise
+
+            self.log_debug('got header: ' + str(header))
+            if header.get('location'):
+                location = self.fixurl(header.get('location'), unquote=True)
+
+                if header.get('code') in (301, 302):
+                    pyfile.url = location
+            else:
+                return header
+
+        return header
+
 
     def process(self, pyfile):
         self.prepare()
@@ -257,7 +291,9 @@ class SimpleHoster(Hoster):
         else:
             if not self.link and self.direct_dl and not self.last_download:
                 self.log_info(_("Looking for direct download link..."))
-                self.handle_direct(pyfile)
+                header = self.follow_redirects_and_get_header(pyfile)
+                if self.isdownload_from_header(header):
+                    self.link = pyfile.url
 
                 if self.link or self.last_download:
                     self.log_info(_("Direct download link detected"))
@@ -279,7 +315,7 @@ class SimpleHoster(Hoster):
                     self.handle_free(pyfile)
 
         if not self.last_download:
-            self.log_info(_("Downloading file..."))
+            self.log_info(_("Downloading file from link " + str(self.link) + "..."))
             self.download(self.link, disposition=self.DISPOSITION)
 
 
@@ -343,6 +379,11 @@ class SimpleHoster(Hoster):
                 self.log_warning(errmsg)
 
                 wait_time = parse_time(errmsg)
+
+                # default wait time is 1h
+                if wait_time == 1:
+                    wait_time = 3600
+
                 self.wait(wait_time, reconnect=wait_time > self.get_config("max_wait", 10) * 60)
                 self.restart(_("Download limit exceeded"))
 
@@ -364,8 +405,11 @@ class SimpleHoster(Hoster):
                 self.info['error'] = errmsg
                 self.log_warning(errmsg)
 
-                if re.search('limit|wait|slot', errmsg, re.I):
+                if re.search('limit|wait|slot|exceed|same time', errmsg, re.I):
                     wait_time = parse_time(errmsg)
+                    # default wait time is 1h
+                    if wait_time == 1:
+                        wait_time = 3600
                     self.wait(wait_time, reconnect=wait_time > self.get_config("max_wait", 10) * 60)
                     self.restart(_("Download limit exceeded"))
 
@@ -381,7 +425,7 @@ class SimpleHoster(Hoster):
                 elif re.search('maint(e|ai)nance|temp', errmsg, re.I):
                     self.temp_offline()
 
-                elif re.search('up to|size', errmsg, re.I):
+                elif re.search('up to|size|large', errmsg, re.I):
                     self.fail(_("File too large for free download"))
 
                 elif re.search('offline|delet|remov|not? (found|(longer)? available)', errmsg, re.I):
@@ -390,16 +434,17 @@ class SimpleHoster(Hoster):
                 elif re.search('filename', errmsg, re.I):
                     self.fail(_("Invalid url"))
 
-                elif re.search('premium', errmsg, re.I):
+                elif re.search('premium|access|private', errmsg, re.I):
                     self.fail(_("File can be downloaded by premium users only"))
 
                 else:
                     self.wait(60, reconnect=True)
                     self.restart(errmsg)
 
-        elif self.WAIT_PATTERN:
+        if self.WAIT_PATTERN:
             m = re.search(self.WAIT_PATTERN, self.data)
             if m is not None:
+                self.log_debug("oh, we'll have to wait, how disappointing...")
                 try:
                     waitmsg = m.group(1).strip()
 
@@ -407,6 +452,12 @@ class SimpleHoster(Hoster):
                     waitmsg = m.group(0).strip()
 
                 wait_time = parse_time(waitmsg)
+
+                # default wait time is 1h
+                if wait_time == 1:
+                    wait_time = 3600
+                self.log_debug("waiting " + str(wait_time) + " seconds")
+
                 self.wait(wait_time, reconnect=wait_time > self.get_config("max_wait", 10) * 60)
 
         self.info.pop('error', None)
@@ -420,7 +471,7 @@ class SimpleHoster(Hoster):
 
 
     def handle_direct(self, pyfile):
-        self.link = pyfile.url if self.isdownload(pyfile.url) else None
+        self.link = self.isdownload(pyfile.url)
 
 
     def handle_multi(self, pyfile):  #: Multi-hoster handler
