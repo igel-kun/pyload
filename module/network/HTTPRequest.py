@@ -72,6 +72,7 @@ class HTTPRequest():
     def initHandle(self):
         """ sets common options to curl handle """
         self.c.setopt(pycurl.FOLLOWLOCATION, 1)
+        self.c.setopt(pycurl.POSTREDIR, pycurl.REDIR_POST_ALL)
         self.c.setopt(pycurl.MAXREDIRS, 5)
         self.c.setopt(pycurl.CONNECTTIMEOUT, 30)
         self.c.setopt(pycurl.NOSIGNAL, 1)
@@ -127,6 +128,10 @@ class HTTPRequest():
         if "timeout" in options:
             self.c.setopt(pycurl.LOW_SPEED_TIME, options["timeout"])
 
+        if "maxredirs" in options:
+            self.c.setopt(pycurl.MAXREDIRS, options["maxredirs"])
+
+
 
     def addCookies(self):
         """ put cookies from curl handle to cj """
@@ -137,7 +142,7 @@ class HTTPRequest():
         """ add cookies from cj to curl handle """
         if self.cj:
             for c in self.cj.getCookies():
-                self.c.setopt(pycurl.COOKIELIST, c)
+                self.c.setopt(pycurl.COOKIELIST, c.encode('utf-8'))
         return
 
     def clearCookies(self):
@@ -186,6 +191,8 @@ class HTTPRequest():
 
         self.setRequestContext(url, get, post, referer, cookies, multipart)
 
+        self.log.debug("sending cookies: %s" % str(cookies))
+
         self.header = ""
 
         self.c.setopt(pycurl.HTTPHEADER, self.headers)
@@ -197,6 +204,7 @@ class HTTPRequest():
             rep = self.header
 
             self.c.setopt(pycurl.FOLLOWLOCATION, 1)
+            self.c.setopt(pycurl.POSTREDIR, pycurl.REDIR_POST_ALL)
             self.c.setopt(pycurl.NOBODY, 0)
 
         else:
