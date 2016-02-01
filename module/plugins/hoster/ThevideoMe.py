@@ -6,11 +6,14 @@ import re
 class ThevideoMe(SimpleHoster):
     __name__ = "ThevideoMe"
     __type__ = "hoster"
-    __pattern__ = r"https?://(?:\w*\.)*(?P<DOMAIN>thevideo\.me)/(?:download/)?(?P<id>\w{12})"
-    __version__ = "0.01"
+    __version__ = "0.02"
+    __status__  = "testing"
+
+    __config__  = [("activated"   , "bool", "Activated"                                        , True)]
+    __pattern__ = r'(?:https?://)?(?:\w*\.)*thevideo\.me/(?:download/)?(?P<id>\w{12})'
     __description__ = """thevideo.me plugin"""
-    __author_name__ = ("igel")
-    __author_mail__ = ("")
+    __license__     = "GPLv3"
+    __authors__ = [("igel", "")]
 
     BASE_URL = 'http://thevideo.me/'
     FORM_PATTERN = r'<form id="veriform".*?</form>'
