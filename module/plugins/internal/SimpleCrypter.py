@@ -165,7 +165,7 @@ class SimpleCrypter(Crypter):
                 redirect = location
             else:
                 self.data = data
-                self.links.extend(self.get_links())
+                self.links.extend(self.get_links(pyfile))
                 return
         else:
             self.log_error(_("Too many redirects"))
@@ -220,7 +220,7 @@ class SimpleCrypter(Crypter):
             self.preload()
             self.check_errors()
 
-            self.links.extend(self.get_links())
+            self.get_links(pyfile)
 
             if self.PAGES_PATTERN:
                 self.handle_pages(pyfile)
@@ -249,7 +249,7 @@ class SimpleCrypter(Crypter):
             self.links.extend(links)
 
 
-    def get_links(self):
+    def get_links(self, pyfile):
         """
         Returns the links extracted from self.data
         You should override this only if it's impossible to extract links using only the LINK_PATTERN.
@@ -278,7 +278,8 @@ class SimpleCrypter(Crypter):
 
         for p in xrange(2, pages + 1):
             self.data = self.load_page(p)
-            self.links.extend(self.get_links())
+            # get_links is already incremental, no need to extend links again
+            self.get_links(pyfile)
 
 
     def check_errors(self):
