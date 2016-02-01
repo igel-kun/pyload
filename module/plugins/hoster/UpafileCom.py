@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import re
-from module.plugins.internal.SimpleHoster import SimpleHoster, create_getInfo
+from module.plugins.internal.SimpleHoster import SimpleHoster
 from module.plugins.captcha.ReCaptcha import ReCaptcha
 
 
@@ -101,5 +101,3 @@ class UpafileCom(SimpleHoster):
             self.log_debug("No link found!")
             self.retry(3, 10, "No link found!")
 
-
-getInfo = create_getInfo(UpafileCom)

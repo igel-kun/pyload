@@ -7,7 +7,7 @@ from urlparse import urlparse
 
 from module.common.json_layer import json_loads
 from module.plugins.captcha.ReCaptcha import ReCaptcha
-from module.plugins.internal.SimpleHoster import SimpleHoster, create_getInfo
+from module.plugins.internal.SimpleHoster import SimpleHoster
 
 
 class DatafileCom(SimpleHoster):
@@ -97,4 +97,3 @@ class DatafileCom(SimpleHoster):
         return json_loads(res)
 
 
-getInfo = create_getInfo(DatafileCom)

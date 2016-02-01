@@ -2,7 +2,7 @@
 
 import re
 
-from module.plugins.internal.SimpleCrypter import SimpleCrypter, create_getInfo
+from module.plugins.internal.SimpleCrypter import SimpleCrypter
 from subprocess import Popen, PIPE, STDOUT
 from tempfile import NamedTemporaryFile
 
@@ -40,4 +40,3 @@ class SiteripzNet(SimpleCrypter):
         print 'link: %s' % link
         return link
 
-getInfo = create_getInfo(SiteripzNet)

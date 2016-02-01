@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from module.plugins.internal.SimpleHoster import SimpleHoster, create_getInfo
+from module.plugins.internal.SimpleHoster import SimpleHoster
 
 import re
 
@@ -36,7 +36,3 @@ class ThevideoMe(SimpleHoster):
         self.link = re.search(self.LINK_PATTERN, self.data).group(1)
 
 
-
-
-
-getInfo = create_getInfo(ThevideoMe)

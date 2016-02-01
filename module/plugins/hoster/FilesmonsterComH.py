@@ -18,7 +18,7 @@
 import re
 
 from module.lib.bottle import json_loads
-from module.plugins.internal.SimpleHoster import SimpleHoster, create_getInfo
+from module.plugins.internal.SimpleHoster import SimpleHoster
 from module.plugins.captcha.ReCaptcha import ReCaptcha
 
 
@@ -114,7 +114,5 @@ class FilesmonsterComH(SimpleHoster):
       # and finally, we can get the link
       url = self.getLink()
       self.download(url, disposition=True, cookies=True)
-
-
 
 

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import re
-from module.plugins.hoster.XFileSharing import XFileSharing, create_getInfo
+from module.plugins.hoster.XFileSharing import XFileSharing
 
 class HipfileCom(XFileSharing):
     __name__ = "HipfileCom"
@@ -32,5 +32,3 @@ class HipfileCom(XFileSharing):
         return re.search(self.DIRECT_LINK_PATTERN, self.html, re.S).group(1)
 
 
-
-getInfo = create_getInfo(HipfileCom)

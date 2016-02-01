@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from module.plugins.hoster.XFileSharing import XFileSharing, create_getInfo
+from module.plugins.hoster.XFileSharing import XFileSharing
 
 
 class XFileSharingLite(XFileSharing):
@@ -21,4 +21,3 @@ class XFileSharingLite(XFileSharing):
         self.multiDL = True
         self.chunkLimit = 1
 
-getInfo = create_getInfo(XFileSharingLite)

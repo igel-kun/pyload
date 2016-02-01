@@ -2,7 +2,7 @@
 
 import re
 
-from module.plugins.internal.SimpleCrypter import SimpleCrypter, create_getInfo
+from module.plugins.internal.SimpleCrypter import SimpleCrypter
 from urlparse import urljoin
 
 class KoukniCzCrypt(SimpleCrypter):
@@ -54,4 +54,3 @@ class KoukniCzCrypt(SimpleCrypter):
     def handle_direct(self, pyfile):
         self.links = []
 
-getInfo = create_getInfo(KoukniCzCrypt)

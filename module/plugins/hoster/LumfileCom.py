@@ -17,7 +17,7 @@
 
 import re
 
-from module.plugins.internal.SimpleHoster import SimpleHoster, create_getInfo
+from module.plugins.internal.SimpleHoster import SimpleHoster
 from module.plugins.captcha.ReCaptcha import ReCaptcha
 
 
@@ -97,4 +97,3 @@ class LumfileCom(SimpleHoster):
             self.retry()
 
 
-getInfo = create_getInfo(LumfileCom)

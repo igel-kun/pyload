@@ -18,7 +18,7 @@
 """
 
 
-from module.plugins.internal.SimpleHoster import SimpleHoster, create_getInfo
+from module.plugins.internal.SimpleHoster import SimpleHoster
 
 class SockshareCom(SimpleHoster):
     __name__ = "SockshareCom"
@@ -33,5 +33,3 @@ class SockshareCom(SimpleHoster):
     HOSTER_NAME = "sockshare.com"
 
 
-
-getInfo = create_getInfo(SockshareCom)

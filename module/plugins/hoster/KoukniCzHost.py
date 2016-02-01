@@ -2,7 +2,7 @@
 
 import re
 
-from module.plugins.internal.SimpleHoster import SimpleHoster, create_getInfo
+from module.plugins.internal.SimpleHoster import SimpleHoster
 
 
 class KoukniCzHost(SimpleHoster):
@@ -44,6 +44,4 @@ class KoukniCzHost(SimpleHoster):
     def setup(self):
         self.multiDL    = True
 
-
-getInfo = create_getInfo(KoukniCzHost)
 

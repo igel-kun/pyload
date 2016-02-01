@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import re
-from module.plugins.internal.SimpleHoster import SimpleHoster, create_getInfo
+from module.plugins.internal.SimpleHoster import SimpleHoster
 
 
 class SharesixCom(SimpleHoster):
@@ -44,4 +44,3 @@ class SharesixCom(SimpleHoster):
 
 
 
-getInfo = create_getInfo(SharesixCom)

@@ -17,7 +17,7 @@
 """
 
 import re
-from module.plugins.internal.SimpleHoster import SimpleHoster, create_getInfo
+from module.plugins.internal.SimpleHoster import SimpleHoster
 from module.utils import fixup
 
 
@@ -69,4 +69,3 @@ class NowDownloadEu(SimpleHoster):
         self.download(str(url.group(1)))
 
 
-getInfo = create_getInfo(NowDownloadEu)
