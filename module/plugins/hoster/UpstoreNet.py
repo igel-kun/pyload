@@ -9,16 +9,10 @@ from module.plugins.internal.SimpleHoster import SimpleHoster, create_getInfo
 class UpstoreNet(SimpleHoster):
     __name__    = "UpstoreNet"
     __type__    = "hoster"
-    __version__ = "0.09"
+    __version__ = "0.10"
     __status__  = "testing"
 
     __pattern__ = r'https?://(?:www\.)?upstore\.net/'
-    __config__  = [("activated"   , "bool", "Activated"                                        , True),
-                   ("use_premium" , "bool", "Use premium account if available"                 , True),
-                   ("fallback"    , "bool", "Fallback to free download if premium fails"       , True),
-                   ("chk_filesize", "bool", "Check file size"                                  , True),
-                   ("max_wait"    , "int" , "Reconnect if waiting time is greater than minutes", 10  )]
-
     __description__ = """Upstore.Net File Download Hoster"""
     __license__     = "GPLv3"
     __authors__     = [("igel", "igelkun@myopera.com")]
@@ -79,22 +73,18 @@ class UpstoreNet(SimpleHoster):
             if m is not None:
                 wait_time = 60* int(m.group(1))
                 self.wantReconnect = True
-                self.retry(wait_time=wait_time, reason="Please wait to download this file")
+                self.retry(wait=wait_time, reason=_("Please wait to download this file"))
 
             m = re.search(self.LINK_FREE_PATTERN, self.data, re.S)
             if m is not None:
+                self.link = m.group(1)
                 break
 
             # sometimes, upstore just restarts the countdown without saying anything...
             # in this case we'll just wait 1h and retry
             self.wantReconnect = True
-            self.retry(wait_time=3600, reason="Upstore doesn't like us today")
+            self.retry(wait_time=3600, reason=_("Upstore doesn't like us today"))
 
-            
-        if m is not None:
-            self.link = m.group(1)
-
-        self.error(_("Download link not found"))
 
 
 
