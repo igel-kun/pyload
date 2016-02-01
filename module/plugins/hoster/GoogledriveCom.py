@@ -6,14 +6,14 @@
 import re
 import urlparse
 
-from module.plugins.internal.SimpleHoster import SimpleHoster, create_getInfo
-from module.plugins.internal.utils import html_unescape
+from module.plugins.internal.SimpleHoster import SimpleHoster
+from module.plugins.internal.misc import html_unescape
 
 
 class GoogledriveCom(SimpleHoster):
     __name__    = "GoogledriveCom"
     __type__    = "hoster"
-    __version__ = "0.17"
+    __version__ = "0.20"
     __status__  = "testing"
 
     __pattern__ = r'https?://(?:www\.)?(drive|docs)\.google\.com/(file/d/\w+|uc\?.*id=)'
@@ -35,7 +35,7 @@ class GoogledriveCom(SimpleHoster):
 
 
     def setup(self):
-        self.multiDL        = True
+        self.multiDL         = True
         self.resume_download = True
         self.chunk_limit     = 1
 
@@ -47,14 +47,11 @@ class GoogledriveCom(SimpleHoster):
             if m is None:
                 return
 
-            link = self.fixurl(link, "https://docs.google.com/")
-            dl   = self.isdownload(link, redirect=False)
+            link = self.fixurl(m.group(1), "https://docs.google.com/")
+            dl   = self.isresource(link)
 
-            if not dl:
-                self.data = self.load(link)
-            else:
+            if dl:
                 self.link = dl
-                break
-
-
-getInfo = create_getInfo(GoogledriveCom)
+                return
+            else:
+                self.data = self.load(link)

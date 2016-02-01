@@ -4,20 +4,19 @@ import re
 
 import BeautifulSoup
 
-from module.plugins.internal.Crypter import Crypter, create_getInfo
+from module.plugins.internal.Crypter import Crypter
 
 
 class HoerbuchIn(Crypter):
     __name__    = "HoerbuchIn"
     __type__    = "crypter"
-    __version__ = "0.64"
+    __version__ = "0.65"
     __status__  = "testing"
 
     __pattern__ = r'http://(?:www\.)?hoerbuch\.in/(wp/horbucher/\d+/.+/|tp/out\.php\?.+|protection/folder_\d+\.html)'
-    __config__  = [("activated"            , "bool", "Activated"                          , True),
-                   ("use_premium"          , "bool", "Use premium account if available"   , True),
-                   ("use_subfolder"        , "bool", "Save package to subfolder"          , True),
-                   ("subfolder_per_package", "bool", "Create a subfolder for each package", True)]
+    __config__  = [("activated"         , "bool"          , "Activated"                       , True     ),
+                   ("use_premium"       , "bool"          , "Use premium account if available", True     ),
+                   ("folder_per_package", "Default;Yes;No", "Create folder for each package"  , "Default")]
 
     __description__ = """Hoerbuch.in decrypter plugin"""
     __license__     = "GPLv3"
@@ -63,6 +62,3 @@ class HoerbuchIn(Crypter):
             links.append(self.req.lastEffectiveURL)
 
         return links
-
-
-getInfo = create_getInfo(HoerbuchIn)

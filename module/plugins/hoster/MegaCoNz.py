@@ -1,19 +1,17 @@
 # -*- coding: utf-8 -*-
 
 import array
+import base64
 import os
 import random
 import re
 
+import Crypto.Cipher.AES
+import Crypto.Util.Counter
 # import pycurl
 
-from base64 import standard_b64decode
-
-from Crypto.Cipher import AES
-from Crypto.Util import Counter
-
 from module.plugins.internal.Hoster import Hoster
-from module.plugins.internal.utils import decode, encode, json
+from module.plugins.internal.misc import decode, encode, json
 
 
 ############################ General errors ###################################
@@ -48,7 +46,7 @@ from module.plugins.internal.utils import decode, encode, json
 class MegaCoNz(Hoster):
     __name__    = "MegaCoNz"
     __type__    = "hoster"
-    __version__ = "0.33"
+    __version__ = "0.37"
     __status__  = "testing"
 
     __pattern__ = r'(https?://(?:www\.)?mega(\.co)?\.nz/|mega:|chrome:.+?)#(?P<TYPE>N|)!(?P<ID>[\w^_]+)!(?P<KEY>[\w\-,]+)'
@@ -66,7 +64,7 @@ class MegaCoNz(Hoster):
 
     def b64_decode(self, data):
         data = data.replace("-", "+").replace("_", "/")
-        return standard_b64decode(data + '=' * (-len(data) % 4))
+        return base64.standard_b64decode(data + '=' * (-len(data) % 4))
 
 
     def get_cipher_key(self, key):
@@ -96,7 +94,7 @@ class MegaCoNz(Hoster):
 
     def decrypt_attr(self, data, key):
         k, iv, meta_mac = self.get_cipher_key(key)
-        cbc             = AES.new(k, AES.MODE_CBC, "\0" * 16)
+        cbc             = Crypto.Cipher.AES.new(k, Crypto.Cipher.AES.MODE_CBC, "\0" * 16)
         attr            = decode(cbc.decrypt(self.b64_decode(data)))
 
         self.log_debug("Decrypted Attr: %s" % attr)
@@ -116,8 +114,8 @@ class MegaCoNz(Hoster):
 
         #: Convert counter to long and shift bytes
         k, iv, meta_mac = self.get_cipher_key(key)
-        ctr             = Counter.new(128, initial_value=long(n.encode("hex"), 16) << 64)
-        cipher          = AES.new(k, AES.MODE_CTR, counter=ctr)
+        ctr             = Crypto.Util.Counter.new(128, initial_value=long(n.encode("hex"), 16) << 64)
+        cipher          = Crypto.Cipher.AES.new(k, Crypto.Cipher.AES.MODE_CTR, counter=ctr)
 
         self.pyfile.setStatus("decrypting")
         self.pyfile.setProgress(0)
@@ -130,7 +128,7 @@ class MegaCoNz(Hoster):
             df = open(file_decrypted, "wb")
 
         except IOError, e:
-            self.fail(e)
+            self.fail(e.message)
 
         chunk_size = 2 ** 15  #: Buffer size, 32k
         # file_mac   = [0, 0, 0, 0]  # calculate CBC-MAC for checksum
@@ -165,10 +163,10 @@ class MegaCoNz(Hoster):
         df.close()
 
         # if file_mac[0] ^ file_mac[1], file_mac[2] ^ file_mac[3] is not meta_mac:
-            # os.remove(file_decrypted)
+            # self.remove(file_decrypted, trash=False)
             # self.fail(_("Checksum mismatch"))
 
-        os.remove(file_crypted)
+        self.remove(file_crypted, trash=False)
         self.last_download = decode(file_decrypted)
 
 

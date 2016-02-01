@@ -2,13 +2,13 @@
 
 import re
 
-from module.plugins.internal.XFSHoster import XFSHoster, create_getInfo
+from module.plugins.internal.XFSHoster import XFSHoster
 
 
 class HugefilesNet(XFSHoster):
     __name__    = "HugefilesNet"
     __type__    = "hoster"
-    __version__ = "0.09"
+    __version__ = "0.10"
     __status__  = "testing"
 
     __pattern__ = r'http://(?:www\.)?hugefiles\.net/\w{12}'
@@ -25,9 +25,6 @@ class HugefilesNet(XFSHoster):
 
     PLUGIN_DOMAIN = "hugefiles.net"
 
-    SIZE_PATTERN = r'File Size:</span>\s*<span.*?>(?P<S>[^<]+)</span></div>'
+    SIZE_PATTERN = r'File Size:</span>\s*<span.*?>(?P<S>.+?)</span></div>'
 
     FORM_INPUTS_MAP = {'ctype': re.compile(r'\d+')}
-
-
-getInfo = create_getInfo(HugefilesNet)

@@ -1,40 +1,20 @@
 # -*- coding: utf-8 -*-
 
-"""
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 3 of the License,
-    or (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-    See the GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program; if not, see <http://www.gnu.org/licenses/>.
-    
-    @author: jeix
-"""
-
-from os.path import join
-from os.path import exists
-from os import makedirs
 import re
-import sys
-import time
+import select
 import socket
 import struct
-from select import select
+import sys
+import time
 
 from module.plugins.internal.Hoster import Hoster
-from module.plugins.internal.utils import fs_join
+from module.plugins.internal.misc import fsjoin
 
 
-class Xdcc(Hoster):
-    __name__    = "Xdcc"
+class XDCC(Hoster):
+    __name__    = "XDCC"
     __type__    = "hoster"
-    __version__ = "0.36"
+    __version__ = "0.40"
     __status__  = "testing"
 
     __config__ = [("nick", "str", "Nickname", "pyload"),
@@ -50,12 +30,13 @@ class Xdcc(Hoster):
         self.timeout = 30
         self.multiDL = False
 
+
     def process(self, pyfile):
         #: Change request type
         self.req = self.pyload.requestFactory.getRequest(self.classname, type="XDCC")
 
         self.pyfile = pyfile
-        for i in range(0, 3):
+        for _i in xrange(0, 3):
             try:
                 nmn = self.do_download(pyfile.url)
                 self.log_debug("Download of %s finished." % nmn)
@@ -72,26 +53,22 @@ class Xdcc(Hoster):
                     self.wait(300)
                     continue
 
-                self.fail("Failed due to socket errors. Code: %d" % errno)
+                self.fail(_("Failed due to socket errors. Code: %d") % errno)
 
-        self.fail("Server blocked our ip, retry again later manually")
+        self.fail(_("Server blocked our ip, retry again later manually"))
+
 
     def do_download(self, url):
         self.pyfile.setStatus("waiting")  #: Real link
 
-        download_folder = self.config['general']['download_folder']
-        location = join(download_folder, self.pyfile.package().folder.decode(sys.getfilesystemencoding()))
-        if not exists(location):
-            makedirs(location)
-
-        m = re.search(r'xdcc://(.*?)/#?(.*?)/(.*?)/#?(\d+)/?', url)
+        m = re.match(r'xdcc://(.*?)/#?(.*?)/(.*?)/#?(\d+)/?', url)
         server = m.group(1)
         chan = m.group(2)
         bot = m.group(3)
         pack = m.group(4)
-        nick = self.get_config('nick')
-        ident = self.get_config('ident')
-        real = self.get_config('realname')
+        nick = self.config.get('nick')
+        ident = self.config.get('ident')
+        real = self.config.get('realname')
 
         temp = server.split(':')
         ln = len(temp)
@@ -100,7 +77,7 @@ class Xdcc(Hoster):
         elif ln == 1:
             host, port = temp[0], 6667
         else:
-            self.fail("Invalid hostname for IRC Server (%s)" % server)
+            self.fail(_("Invalid hostname for IRC Server: %s") % server)
 
         #######################
         #: CONNECT TO IRC AND IDLE FOR REAL LINK
@@ -139,9 +116,9 @@ class Xdcc(Hoster):
                 if (dl_time + self.timeout) < time.time():  #@TODO: add in config
                     sock.send("QUIT :byebye\r\n")
                     sock.close()
-                    self.fail("XDCC Bot did not answer")
+                    self.fail(_("XDCC Bot did not answer"))
 
-            fdset = select([sock], [], [], 0)
+            fdset = select.select([sock], [], [], 0)
             if sock not in fdset[0]:
                 continue
 
@@ -159,7 +136,7 @@ class Xdcc(Hoster):
                     sock.send("PONG %s\r\n" % first[1])
 
                 if first[0] == "ERROR":
-                    self.fail("IRC-Error: %s" % line)
+                    self.fail(_("IRC-Error: %s") % line)
 
                 msg = line.split(None, 3)
                 if len(msg) != 4:
@@ -172,7 +149,7 @@ class Xdcc(Hoster):
                     'text': msg[3][1:]
                 }
 
-                if nick is msg['target'][0:len(nick)] and "PRIVMSG" is msg['action']:
+                if nick == msg['target'][0:len(nick)] and "PRIVMSG" == msg['action']:
                     if msg['text'] == "\x01VERSION\x01":
                         self.log_debug("Sending CTCP VERSION")
                         sock.send("NOTICE %s :%s\r\n" % (msg['origin'], "pyLoad! IRC Interface"))
@@ -182,15 +159,15 @@ class Xdcc(Hoster):
                     elif msg['text'] == "\x01LAG\x01":
                         pass  #: don't know how to answer
 
-                if not (bot is msg['origin'][0:len(bot)]
-                        and nick is msg['target'][0:len(nick)]
+                if not (bot == msg['origin'][0:len(bot)]
+                        and nick == msg['target'][0:len(nick)]
                         and msg['action'] in ("PRIVMSG", "NOTICE")):
                     continue
 
                 if self.pyload.debug:
                     self.log_debug(msg['origin'], msg['text'])
 
-                if "You already requested that pack" in msg["text"]:
+                if "You already requested that pack" in msg['text']:
                     retry = time.time() + 300
 
                 if "you must be on a known channel to request a pack" in msg['text']:
@@ -210,14 +187,14 @@ class Xdcc(Hoster):
 
         self.pyfile.name = packname
 
-        dl_folder = self.pyload.config.get("general", "download_folder")
-        filename = fs_join(dl_folder, packname)
+        dl_folder = self.pyload.config.get('general', 'download_folder')
+        filename = fsjoin(dl_folder, packname)
 
         self.log_info(_("Downloading %s from %s:%d") % (packname, ip, port))
 
         self.pyfile.setStatus("downloading")
         newname = self.req.download(ip, port, filename, sock, self.pyfile.setProgress)
-        if newname and newname is not filename:
+        if newname and newname != filename:
             self.log_info(_("%(name)s saved as %(newname)s") % {'name': self.pyfile.name, 'newname': newname})
             filename = newname
 
