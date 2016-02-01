@@ -8,7 +8,7 @@ from module.plugins.internal.Crypter import Crypter
 class SolarmovieIs(Crypter):
     __name__ = 'SolarmovieIs'
     __type__ = 'container'
-    __pattern__ = r'https?://(?:www\.)?solarmovie\.is/+(.*)'
+    __pattern__ = r'https?://(?:www\.)?solarmovie\.(?:is|ph)/+(.*)'
     __version__ = '0.1'
     __config__ = [('hoster_blacklist', 'str', 'List of non-accepted hosters (space separated)', '')]
     __description__ = """Solarmovie.is Container Plugin"""
@@ -48,7 +48,7 @@ class SolarmovieIs(Crypter):
     
 
     # find info about the movie in the movie page
-    MOVIE_INFO_PATTERN = r'\s*(?P<name>.+?)(?:\s|\n)*<a class="year" href=".*?">(?:\s|\n)*(?P<year>\d+)</a>'
+    MOVIE_INFO_PATTERN = r'\s*(?P<name>.+?)(?:\s|\n|</span>)*<a class="year" href=".*?">(?:\s|\n)*(?P<year>\d+)</a>'
 
     def getInfo(self, url_path):
         # it's either a movie or some TV show/season/episode
