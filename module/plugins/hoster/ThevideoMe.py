@@ -1,17 +1,41 @@
 # -*- coding: utf-8 -*-
-from module.plugins.hoster.XFileSharingLite import XFileSharingLite, create_getInfo
+from module.plugins.internal.SimpleHoster import SimpleHoster, create_getInfo
 
+import re
 
-class ThevideoMe(XFileSharingLite):
+class ThevideoMe(SimpleHoster):
     __name__ = "ThevideoMe"
     __type__ = "hoster"
-    __pattern__ = r"https?://(?:\w*\.)*(?P<DOMAIN>thevideo\.me)/"
+    __pattern__ = r"https?://(?:\w*\.)*(?P<DOMAIN>thevideo\.me)/(?:download/)?(?P<id>\w{12})"
     __version__ = "0.01"
     __description__ = """thevideo.me plugin"""
     __author_name__ = ("igel")
     __author_mail__ = ("")
 
-    HIDDEN_POST_PARAMETERS = "attr.*id: '(?P<id>[^']*)'.*value: '(?P<value>[^']*)'.*prependTo\(.*form.*\)"
+    BASE_URL = 'http://thevideo.me/'
+    FORM_PATTERN = r'<form id="veriform".*?</form>'
+    VERSION_PATTERN = r"onclick=\"download_video\('\w*','(?P<short>.)','(?P<long>[^']*)'\)\">(?P<qual>[^<]*)</a>.*?\s(?P<size>\d*)[. ]"
+    LINK_PATTERN = r'<a href="([^"]*)" name="dl" id="btn_download".*Download'
+
+    def handle_free(self, pyfile):
+        file_id = re.search(self.__pattern__, pyfile.url).group('id')
+        self.data = self.load(self.BASE_URL + 'cgi-bin/index_dl.cgi?op=get_vid_versions&file_code=%s' % file_id)
+
+        # get the best quality version
+        available_versions = re.findall(self.VERSION_PATTERN, self.data)
+        ver = dict()
+        for short_url,long_url,qual,size in available_versions:
+            ver[size] = self.BASE_URL + 'download/' + file_id + '/' + short_url + '/' + long_url
+        
+        self.log_debug('versions: %s' % str(ver))
+
+        # get best quality page
+        self.data = self.load(ver[max(ver, key=int)])
+
+        # get file from there
+        self.link = re.search(self.LINK_PATTERN, self.data).group(1)
+
+
 
 
 
