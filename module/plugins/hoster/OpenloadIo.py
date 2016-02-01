@@ -61,12 +61,18 @@ class OpenloadIo(SimpleHoster):
         file_id     = self.info['pattern']['ID']
         ticket_json = self._load_json(self._DOWNLOAD_TICKET_URI_PATTERN.format(file_id))
 
-        self.wait(ticket_json['result']['wait_time'])
+        self.log_debug('json response: %s' % str(ticket_json))
 
-        ticket = ticket_json['result']['ticket']
+        status = ticket_json['status']
+        if status == 509:
+            self.log_debug('waiting because: %s' %ticket_json['msg'])
+            self.wait(3600, True)
+        else:
+            self.wait(ticket_json['result']['wait_time'])
+            ticket = ticket_json['result']['ticket']
 
-        download_json = self._load_json(self._DOWNLOAD_FILE_URI_PATTERN.format(file_id, ticket))
-        self.link = download_json['result']['url']
+            download_json = self._load_json(self._DOWNLOAD_FILE_URI_PATTERN.format(file_id, ticket))
+            self.link = download_json['result']['url']
 
 
 getInfo = create_getInfo(OpenloadIo)
