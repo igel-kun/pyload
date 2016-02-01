@@ -38,6 +38,8 @@ class Keep2ShareCc(SimpleHoster):
     LINK_PREMIUM_PATTERN = r'window\.location\.href = \'(.+?)\';'
     UNIQUE_ID_PATTERN    = r"data: {uniqueId: '(?P<uID>\w+)', free: 1}"
 
+    PREMIUM_ONLY_PATTERN = r'only for premium members'
+
     CAPTCHA_PATTERN = r'src="(/file/captcha\.html.+?)"'
 
     WAIT_PATTERN         = r'Please wait ([\d:]+) to download this file'
@@ -45,40 +47,16 @@ class Keep2ShareCc(SimpleHoster):
     ERROR_PATTERN        = r'>\s*(Free user can\'t download large files|You no can access to this file|This download available only for premium users|This is private file)'
 
 
-    def check_errors(self):
-        m = re.search(self.TEMP_ERROR_PATTERN, self.data)
-        if m is not None:
-            self.info['error'] = m.group(1)
-            self.wantReconnect = True
-            self.retry(wait=30 * 60, msg=m.group(0))
-
-        m = re.search(self.ERROR_PATTERN, self.data)
-        if m is not None:
-            errmsg = self.info['error'] = m.group(1)
-            self.error(errmsg)
-
-        m = re.search(self.WAIT_PATTERN, self.data)
-        if m is not None:
-            self.log_debug("Hoster told us to wait for %s" % m.group(1))
-
-            #: String to time convert courtesy of https://stackoverflow.com/questions/10663720
-            ftr = [3600, 60, 1]
-            wait_time = sum(a * b for a, b in zip(ftr, map(int, m.group(1).split(':'))))
-
-            self.wantReconnect = True
-            self.retry(wait=wait_time, msg="Please wait to download this file")
-
-        self.info.pop('error', None)
-        # super(Keep2ShareCc, self).check_errors()
-
 
     def handle_free(self, pyfile):
+        self.check_errors()
+
         self.fid  = re.search(r'<input type="hidden" name="slow_id" value="(.+?)">', self.data).group(1)
         self.data = self.load(pyfile.url, post={'yt0': '', 'slow_id': self.fid})
 
         # self.log_debug(self.fid)
         # self.log_debug(pyfile.url)
-
+        
         self.check_errors()
 
         m = re.search(self.LINK_FREE_PATTERN, self.data)
@@ -127,7 +105,6 @@ class Keep2ShareCc(SimpleHoster):
         self.data = self.load(self.pyfile.url, post=post_data)
 
         if 'verification code is incorrect' in self.data:
-            self.log_debug('answer was %s' % self.data)
             self.retry_captcha()
         else:
             self.captcha.correct()
