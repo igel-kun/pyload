@@ -176,8 +176,8 @@ class Hoster(Base):
             resource = url
         else:
             resource = False
-
-    return resource
+        
+        return resource
 
     def isresource(self, url):
         header = False
