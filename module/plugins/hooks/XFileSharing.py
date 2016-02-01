@@ -35,12 +35,12 @@ class XFileSharing(Addon):
                         "fileparadox.in", "filevice.com", "hostingbulk.com", "junkyvideo.com",
                         "ravishare.com", "salefiles.com", "sendmyway.com", "sharebeast.com",
                         "sharesix.com", "thefile.me", "verzend.be", "worldbytez.com",
-                        "xvidstage.com", "linestorage.com",
+                        "xvidstage.com",
                         # NOT TESTED:
                         "101shared.com", "4upfiles.com", "filemaze.ws", "filenuke.com",
                         "linkzhost.com", "mightyupload.com", "rockdizfile.com", "sharerepo.com",
                         "shareswift.com", "uploadbaz.com", "uploadc.com", "vidbull.com",
-                        "zalaa.com", "zomgupload.com", "movdivx.com",
+                        "zalaa.com", "zomgupload.com",
                         # NOT WORKING:
                         "amonshare.com", "banicrazy.info", "boosterking.com", "host4desi.com",
                         "laoupload.com", "rd-fs.com"]
@@ -48,19 +48,20 @@ class XFileSharing(Addon):
 
 
     def activate(self):
-        for type, plugin in (("hoster" , "XFileSharing"),
+        for type, plugin in (("hoster" , "XFileSharingHoster"),
                              ("crypter", "XFileSharingFolder")):
             self._load(type, plugin)
 
 
     def deactivate(self):
-        for type, plugin in (("hoster" , "XFileSharing"),
+        for type, plugin in (("hoster" , "XFileSharingHoster"),
                              ("crypter", "XFileSharingFolder")):
             self._unload(type, plugin)
 
 
     def get_pattern(self, type, plugin):
         if self.config.get('use_%s_list' % type):
+            self.log_info(_('handling only listed hosters'))
             plugin_list = self.config.get('%s_list' % type)
             plugin_list = plugin_list.replace(' ', '').replace('\\', '')
             plugin_list = plugin_list.replace('|', ',').replace(';', ',')
@@ -87,6 +88,7 @@ class XFileSharing(Addon):
                            "" if len(plugin_set) == 1 else "s",
                            match_list.replace('\.', '.').replace('|', ', ')))
         else:
+            self.log_info(_('handling all sorts of hosters'))
             plugin_list = []
             isXFS = lambda klass: any(k.__name__.startswith("XFS") for k in inspect.getmro(klass))
 
