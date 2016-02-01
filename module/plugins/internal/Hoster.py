@@ -108,13 +108,10 @@ class Hoster(Base):
         if 'content-disposition' in header:
             return True;
 
-        elif header.get('content-type') == 'text/html':
-            return False;
-
         else:
             mimetype    = ""
             contenttype = header.get('content-type')
-            extension   = os.path.splitext(parse_name(url))[-1]
+            extension   = os.path.splitext(parse_name(self.pyfile.url))[-1]
 
             if contenttype:
                 mimetype = contenttype.split(';')[0].strip()
@@ -122,53 +119,18 @@ class Hoster(Base):
             elif extension:
                 mimetype = mimetypes.guess_type(extension, False)[0] or "application/octet-stream"
 
-            if mimetype and (link or 'html' not in mimetype):
+            if mimetype and ('html' not in mimetype):
                 return True;
             else:
                 return False;
 
 
     def isdownload(self, url, resume=None, redirect=True):
-        link      = False
-        maxredirs = 10
-
-        if resume is None:
-            resume = self.resume_download
-
-        if type(redirect) is int:
-            maxredirs = max(redirect, 1)
-
-        elif redirect:
-            maxredirs = self.get_config("maxredirs", default=maxredirs, plugin="UserAgentSwitcher")
-
-        for i in xrange(maxredirs):
-            self.log_debug("Redirect #%d to: %s" % (i, url))
-
-            # some hosters (like datafile.com) respond to HEADER requests with an empty header :(
-            # we'll assume for now that this means we don't have a direct download
-            try:
-                header = self.load(url, just_header=True)
-            except error, e:
-                if code == 52:
-                    self.m.log.warning(_("got an empty header as reply, I'll assume this is not a direct download."))
-                    return None
-                else:
-                    raise
-
-            self.log_debug('got header: ' + str(header))
-            if header.get('location'):
-                location = self.fixurl(header.get('location'), unquote=True)
-
-                if header.get('code') in (301, 302):
-                    url = location
-            else:
-                if self.isdownload_from_header(header):
-                    return url;
-                else:
-                    return None;
-
-        return None
-
+        header = self.follow_redirects_and_get_header(self.pyfile, redirect)
+        if header is not None and  self.isdownload_from_header(header):
+            return True;
+        else:
+            return False;
 
 
     def download(self, url, get={}, post={}, ref=True, cookies=True, disposition=True, resume=None, chunks=None):

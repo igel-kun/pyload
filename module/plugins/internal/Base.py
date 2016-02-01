@@ -5,6 +5,7 @@ import os
 import re
 import time
 import urlparse
+import pycurl
 
 from module.plugins.internal.Captcha import Captcha
 from module.plugins.internal.Plugin import Plugin, Abort, Fail, Reconnect, Retry, Skip
@@ -278,6 +279,50 @@ class Base(Plugin):
     #: Deprecated method, use `_process` instead (Remove in 0.4.10)
     def preprocessing(self, *args, **kwargs):
         return self._process(*args, **kwargs)
+
+
+    # this method modifies pyfile.url to the end of a redirect-chain found in the header replies and returns the header found last
+    # TODO: check if the first couple of lines of self.isdownload() are still necessary if we have this method
+    def follow_redirects_and_get_header(self, pyfile, redirect=10):
+        maxredirs = 10
+
+        if type(redirect) is int:
+            maxredirs = max(redirect, 1)
+
+        elif redirect:
+            maxredirs = self.get_config("maxredirs", default=maxredirs, plugin="UserAgentSwitcher")
+
+        for i in xrange(maxredirs):
+            self.log_debug("Redirect #%d to: %s" % (i, pyfile.url))
+
+            # some hosters (like datafile.com) respond to HEADER requests with an empty header :(
+            # we'll assume for now that this means we don't have a redirect
+            try:
+                header = self.load(pyfile.url, just_header=True)
+            except pycurl.error, e:
+                self.log_debug('got pycurl.error %s' % e)
+                code, msg = e.args
+                if code == 52:
+                    self.log_warning(_("got an empty header as reply."))
+                    # restore pycurl parameters
+                    self.req.http.c.setopt(pycurl.FOLLOWLOCATION, 1)
+                    self.req.http.c.setopt(pycurl.POSTREDIR, pycurl.REDIR_POST_ALL)
+                    self.req.http.c.setopt(pycurl.NOBODY, 0)
+                    return None
+                else:
+                    raise
+
+            self.log_debug('got header: ' + str(header))
+            if header.get('location'):
+                location = self.fixurl(header.get('location'), unquote=True)
+
+                if header.get('code') in (301, 302):
+                    pyfile.url = location
+            else:
+                return header
+
+        return header
+
 
 
     def process(self, pyfile):
