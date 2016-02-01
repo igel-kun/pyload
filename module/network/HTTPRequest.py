@@ -191,8 +191,6 @@ class HTTPRequest():
 
         self.setRequestContext(url, get, post, referer, cookies, multipart)
 
-        self.log.debug("sending cookies: %s" % str(cookies))
-
         self.header = ""
 
         self.c.setopt(pycurl.HTTPHEADER, self.headers)
