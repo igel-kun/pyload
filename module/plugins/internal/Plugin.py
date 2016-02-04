@@ -191,13 +191,15 @@ class Plugin(object):
             set_cookies(req.cj, cookies)
 
         #@TODO: Move to network in 0.4.10
-        if redirect:
+        if not redirect:
+            req.http.c.setopt(pycurl.FOLLOWLOCATION, 0)
+        else:
             req.http.c.setopt(pycurl.FOLLOWLOCATION, 1)
             req.http.c.setopt(pycurl.POSTREDIR, pycurl.REDIR_POST_ALL)
 
-        elif type(redirect) is int:
-            maxredirs = int(self.pyload.api.getConfigValue("UserAgentSwitcher", "maxredirs", "plugin")) or 5  #@TODO: Remove `int` in 0.4.10
-            req.http.c.setopt(pycurl.MAXREDIRS, redirect)
+            if type(redirect) is int:
+                maxredirs = int(self.pyload.api.getConfigValue("UserAgentSwitcher", "maxredirs", "plugin")) or 5  #@TODO: Remove `int` in 0.4.10
+                req.http.c.setopt(pycurl.MAXREDIRS, redirect)
 
         html = req.load(url, get, post, ref, bool(cookies), just_header, multipart, decode is True)  #@TODO: Fix network multipart in 0.4.10
 
