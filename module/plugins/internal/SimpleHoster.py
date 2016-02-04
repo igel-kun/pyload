@@ -258,8 +258,7 @@ class SimpleHoster(Hoster):
         else:
             if not self.link and self.direct_dl:
                 self.log_info(_("Looking for direct download link..."))
-                header = self.follow_redirects_and_get_header(pyfile)
-                if header is not None and self.isdownload_from_header(header):
+                if self.isresource(pyfile.url):
                     self.link = pyfile.url
 
                 if self.link:

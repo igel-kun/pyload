@@ -158,7 +158,7 @@ class Hoster(Base):
             self.check_status()
 
 
-    def isresource_from_header(self, header):
+    def isresource_from_header(self, header, url):
         contenttype = header.get('content-type')
         extension   = os.path.splitext(parse_name(url))[-1]
 
@@ -196,7 +196,7 @@ class Hoster(Base):
             else:
                 raise
 
-        return self.isresource_from_header(header)
+        return self.isresource_from_header(header, url)
 
 
     def _download(self, url, filename, get, post, ref, cookies, disposition, resume, chunks):
