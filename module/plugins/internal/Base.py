@@ -5,7 +5,6 @@ import os
 import re
 import time
 import urlparse
-import pycurl
 
 from module.plugins.internal.Captcha import Captcha
 from module.plugins.internal.Plugin import Plugin, Abort, Fail, Reconnect, Retry, Skip
