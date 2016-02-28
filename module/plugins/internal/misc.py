@@ -38,7 +38,7 @@ except ImportError:
 class misc(object):
     __name__    = "misc"
     __type__    = "plugin"
-    __version__ = "0.26"
+    __version__ = "0.29"
     __status__  = "stable"
 
     __pattern__ = r'^unmatchable$'
@@ -659,7 +659,7 @@ def format_exc(frame=None):
     Format call-stack and display exception information (if availible)
     """
     exc_info = sys.exc_info()
-    exc_desc = ""
+    exc_desc = u""
 
     callstack = traceback.extract_stack(frame)
     callstack = callstack[:-1]
@@ -670,10 +670,10 @@ def format_exc(frame=None):
         if callstack[-1][0] == exception_callstack[0][0]:  #@NOTE: Does this exception belongs to us?
             callstack = callstack[:-1]
             callstack.extend(exception_callstack)
-            exc_desc = "".join(traceback.format_exception_only(exc_info[0], exc_info[1]))
+            exc_desc = decode("".join(traceback.format_exception_only(exc_info[0], exc_info[1])))
 
-    msg  = "Traceback (most recent call last):\n"
-    msg += "".join(traceback.format_list(callstack))
+    msg  = u"Traceback (most recent call last):\n"
+    msg += decode("".join(traceback.format_list(callstack)))
     msg += exc_desc
 
     return msg
@@ -756,7 +756,8 @@ def parse_html_form(attr_str, html, input_names={}):
         inputs = {}
         action = parse_html_tag_attr_value("action", form.group('TAG'))
 
-        for inputtag in re.finditer(r'(<(input|textarea).*?>)([^<]*(?=</\2)|)', form.group('CONTENT'), re.I | re.S):
+        for inputtag in re.finditer(r'(<(input|textarea).*?>)([^<]*(?=</\2)|)',
+                                    re.sub(r'<!--.+?-->', "", form.group('CONTENT'), 0 , re.I | re.S), re.I | re.S):
             name = parse_html_tag_attr_value("name", inputtag.group(1))
             if name:
                 value = parse_html_tag_attr_value("value", inputtag.group(1))

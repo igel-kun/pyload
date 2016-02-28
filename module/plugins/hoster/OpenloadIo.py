@@ -10,7 +10,7 @@ from module.plugins.internal.misc import json
 class OpenloadIo(SimpleHoster):
     __name__    = "OpenloadIo"
     __type__    = "hoster"
-    __version__ = "0.14"
+    __version__ = "0.15"
     __status__  = "testing"
 
     __pattern__ = r'https?://(?:www\.)?openload\.(co|io)/(f|embed)/(?P<ID>[\w\-]+)'
@@ -63,10 +63,15 @@ class OpenloadIo(SimpleHoster):
 
         self.log_debug('json response: %s' % str(ticket_json))
 
-        status = ticket_json['status']
-        if status == 509:
-            self.log_debug('waiting because: %s' %ticket_json['msg'])
-            self.wait(3600, True)
+        if ticket_json['status'] == 404:
+            self.offline(ticket_json['msg'])
+
+        elif ticket_json['status'] == 509:
+            self.temp_offline(ticket_json['msg'])
+
+        elif ticket_json['status'] != 200:
+            self.fail(ticket_json['msg'])
+
         else:
             self.wait(ticket_json['result']['wait_time'])
             ticket = ticket_json['result']['ticket']

@@ -17,11 +17,13 @@ from module.plugins.Plugin import Abort, Fail, Reconnect, Retry, SkipDownload as
 from module.plugins.internal.misc import (Config, DB, decode, encode, exists, fixurl, fsjoin,
                                           format_exc, html_unescape, parse_html_header, remove, set_cookies)
 
+_decode = decode  #@NOTE: save decode() as _decode() for use with load(url, decode='decode-str')
+
 
 class Plugin(object):
     __name__    = "Plugin"
     __type__    = "plugin"
-    __version__ = "0.66"
+    __version__ = "0.67"
     __status__  = "stable"
 
     __config__  = []  #: [("name", "type", "desc", "default")]
@@ -201,14 +203,18 @@ class Plugin(object):
                 maxredirs = int(self.pyload.api.getConfigValue("UserAgentSwitcher", "maxredirs", "plugin")) or 5  #@TODO: Remove `int` in 0.4.10
                 req.http.c.setopt(pycurl.MAXREDIRS, redirect)
 
-        html = req.load(url, get, post, ref, bool(cookies), just_header, multipart, decode is True)  #@TODO: Fix network multipart in 0.4.10
+        #@TODO: Move to network in 0.4.10
+        if isinstance(ref, basestring):
+            req.lastURL = ref
+
+        html = req.load(url, get, post, bool(ref), bool(cookies), just_header, multipart, decode is True)  #@TODO: Fix network multipart in 0.4.10
 
         if decode:
             html = html_unescape(html)
 
         #@TODO: Move to network in 0.4.10
         if isinstance(decode, basestring):
-            html = decode(html, decode)
+            html = _decode(html, decode)
 
         self.last_html = html
 
