@@ -10,7 +10,7 @@ class ThevideoMe(SimpleHoster):
     __status__  = "testing"
 
     __config__  = [("activated"   , "bool", "Activated"                                        , True)]
-    __pattern__ = r'(?:https?://)?(?:\w*\.)*thevideo\.me/(?:download/)?(?P<id>\w{12})'
+    __pattern__ = r'(?:https?://)?(?:\w*\.)*thevideo\.me/(?:download/|embed-)?(?P<id>\w{12})'
     __description__ = """thevideo.me plugin"""
     __license__     = "GPLv3"
     __authors__ = [("igel", "")]
@@ -19,6 +19,10 @@ class ThevideoMe(SimpleHoster):
     FORM_PATTERN = r'<form id="veriform".*?</form>'
     VERSION_PATTERN = r"onclick=\"download_video\('\w*','(?P<short>.)','(?P<long>[^']*)'\)\">(?P<qual>[^<]*)</a>.*?\s(?P<size>\d*)[. ]"
     LINK_PATTERN = r'<a href="([^"]*)" name="dl" id="btn_download".*Download'
+    NAME_PATTERN = r'<h1[^>]*>Download ([^<]*)<'
+    OFFLINE_PATTERN = r'not\s*\w*\sfound'
+
+    URL_REPLACEMENTS = [(__pattern__ + ".*", BASE_URL + r'download/\g<id>')]
 
     def handle_free(self, pyfile):
         file_id = re.search(self.__pattern__, pyfile.url).group('id')
