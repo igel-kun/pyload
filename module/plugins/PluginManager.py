@@ -172,10 +172,13 @@ class PluginManager:
                     if folder == "hooks":
                         append = True
                         for item in config:
-                            if item[0] == "activated": append = False
+                            if item[0] == "activated":
+                                append = False
+                                break
 
                         # activated flag missing
-                        if append: config.append(["activated", "bool", "Activated", False])
+                        if append:
+                            config.append(["activated", "bool", "Activated", False])
 
                     try:
                         self.core.config.addPluginConfig(name, config, desc)
@@ -364,20 +367,4 @@ class PluginManager:
 
 
 
-if __name__ == "__main__":
-    _ = lambda x: x
-    pypath = "/home/christian/Projekte/pyload-0.4/module/plugins"
-
-    from time import time
-
-    p = PluginManager(None)
-
-    a = time()
-
-    test = ["http://www.youtube.com/watch?v=%s" % x for x in range(0, 100)]
-    print p.parseUrls(test)
-
-    b = time()
-
-    print b - a, "s"
     
