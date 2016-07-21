@@ -21,7 +21,8 @@ class XFSHoster(SimpleHoster):
                    ("use_premium" , "bool", "Use premium account if available"                 , True),
                    ("fallback"    , "bool", "Fallback to free download if premium fails"       , True),
                    ("chk_filesize", "bool", "Check file size"                                  , True),
-                   ("max_wait"    , "int" , "Reconnect if waiting time is greater than minutes", 10  )]
+                   ("max_wait"    , "int" , "Reconnect if waiting time is greater than minutes", 10  ),
+                   ("min_size"    , "int" , "Minimum size of files to download"                , 0)]
 
     __description__ = """XFileSharing hoster plugin"""
     __license__     = "GPLv3"
@@ -90,7 +91,7 @@ class XFSHoster(SimpleHoster):
 
     def handle_free(self, pyfile):
         # don't download small files
-        minSize = self.pyload.config.getPlugin('XFileSharingPro', 'minSize')
+        minSize = self.config.get('min_size')
         self.log_debug('filesize is %s, minimum is %s MB' % (str(pyfile.size), str(minSize)))
         if pyfile.size and minSize > 0:
             if pyfile.size < 1024*1024*minSize:
@@ -119,7 +120,8 @@ class XFSHoster(SimpleHoster):
                 self.link = m.group(1)
                 break
         else:
-            self.error(_("Too many OPs"))
+            if 'op' in data:
+                self.error(_("Missing OP data after: ") + data['op'])
 
         self.log_debug('using link: %s' % self.link)
 
