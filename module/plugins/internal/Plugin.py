@@ -23,7 +23,7 @@ _decode = decode  #@NOTE: save decode() as _decode() for use with load(url, deco
 class Plugin(object):
     __name__    = "Plugin"
     __type__    = "plugin"
-    __version__ = "0.67"
+    __version__ = "0.68"
     __status__  = "stable"
 
     __config__  = []  #: [("name", "type", "desc", "default")]
@@ -151,6 +151,13 @@ class Plugin(object):
             uid = pwd.getpwnam(self.pyload.config.get('permission', "user"))[2]
             gid = grp.getgrnam(self.pyload.config.get('permission', "group"))[2]
             os.chown(path, uid, gid)
+
+
+    def skip(self, msg):
+        """
+        Skip and give msg
+        """
+        raise Skip(encode(msg))  # @TODO: Remove `encode` in 0.4.10
 
 
     def fail(self, msg):

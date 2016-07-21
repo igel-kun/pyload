@@ -4,12 +4,13 @@ import re
 
 from module.network.RequestFactory import getURL as get_url
 from module.plugins.internal.SimpleHoster import SimpleHoster
+from module.plugins.internal.misc import format_exc
 
 
 class OneFichierCom(SimpleHoster):
     __name__    = "OneFichierCom"
     __type__    = "hoster"
-    __version__ = "0.99"
+    __version__ = "1.01"
     __status__  = "testing"
 
     __pattern__ = r'https?://(?:www\.)?(?:\w+\.)?(?P<HOST>1fichier\.com|alterupload\.com|cjoint\.net|d(?:es)?fichiers\.com|dl4free\.com|megadl\.fr|mesfichiers\.org|piecejointe\.net|pjointe\.com|tenvoi\.com)(?:/\?\w+)?'
@@ -39,7 +40,7 @@ class OneFichierCom(SimpleHoster):
 
     NAME_PATTERN     = r'>File\s*Name :</td>\s*<td.*>(?P<N>.+?)<'
     SIZE_PATTERN     = r'>Size :</td>\s*<td.*>(?P<S>[\d.,]+) (?P<U>[\w^_]+)'
-    OFFLINE_PATTERN  = r'File not found !\s*<'
+    OFFLINE_PATTERN  = r'(?:File not found !\s*<)|(?:>The requested file has been deleted following an abuse request\.<)'
     LINK_PATTERN     = r'<a href="(.+?)".*>Click here to download the file</a>'
 
     WAIT_PATTERN     = r'>You must wait \d+ minutes'
@@ -57,6 +58,7 @@ class OneFichierCom(SimpleHoster):
                 headers = dict((k.lower(), v) for k,v in re.findall(r'(?P<name>.+?): (?P<value>.+?)\r?\n', get_url(redirect, just_header=True)))
                 if 'location' in headers and headers['location']:
                     redirect = headers['location']
+
                 else:
                     if 'content-type' in headers and headers['content-type'] == "application/octet-stream":
                         if "filename=" in headers.get('content-disposition'):
@@ -75,8 +77,10 @@ class OneFichierCom(SimpleHoster):
                     break
 
             except Exception, e:
+                print format_exc()
                 info = {'status' : 8,
                         'error'  : e.message}
+                break
 
         else:
             info = {'status' : 8,

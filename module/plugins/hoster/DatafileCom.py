@@ -1,11 +1,8 @@
 # -*- coding: utf-8 -*-
 
-import pycurl
 import re
-import time
-from urlparse import urlparse
 
-from module.common.json_layer import json_loads
+from module.plugins.internal.misc import json, seconds_to_midnight
 from module.plugins.captcha.ReCaptcha import ReCaptcha
 from module.plugins.internal.SimpleHoster import SimpleHoster
 
@@ -13,87 +10,82 @@ from module.plugins.internal.SimpleHoster import SimpleHoster
 class DatafileCom(SimpleHoster):
     __name__    = "DatafileCom"
     __type__    = "hoster"
-    __version__ = "0.01"
+    __version__ = "0.02"
+    __status__  = "testing"
 
-    __pattern__ = r'https?://(?:www\.)?(?:datafile|wcrypt)\.com/\w*/(?P<ID>\w+)'
-    __description__ = """Datafile & Wcrypt hoster plugin"""
+    __pattern__ = r'https?://(?:www\.)?datafile\.com/d/(?P<ID>\w{17})'
+    __config__ = [("activated"   , "bool", "Activated"                                        , True),
+                  ("use_premium" , "bool", "Use premium account if available"                 , True),
+                  ("fallback"    , "bool", "Fallback to free download if premium fails"       , True),
+                  ("chk_filesize", "bool", "Check file size"                                  , True),
+                  ("max_wait"    , "int" , "Reconnect if waiting time is greater than minutes", 10  )]
+
+    __description__ = """Datafile.com hoster plugin"""
     __license__     = "GPLv3"
-    __authors__     = [("prOq", ""),
-                       ("igel", "")]
+    __authors__     = [("GammaC0de", "nitzo2001[AT]yahoo[DOT]com")]
 
+    NAME_PATTERN = r'<div class="file-name">(?P<N>.+?)</div>'
+    SIZE_PATTERN = r'>Filesize: <span class="lime">(?P<S>[\d.,]+) (?P<U>[\w^_]+)'
 
-    INFO_PATTERN    = r'<div class="file-name">(?P<N>.*?)</div>.*<div class="file-size">Filesize: .*?(?P<S>[\d.]+)\s(?P<U>\w+)</'
-    OFFLINE_PATTERN = r'<h1>404'
-    ERROR_PATTERN = r'<div class="error">'
-    PREMIUM_ONLY_PATTERN  = r'can be downloaded only by users.*Premium account'
-    WAIT_TIME = r'exceeded your free.*download limit'
-    DELAY_PATTERN = r"counter.contdownTimer\('(?P<time>\d+)'"
-    DL_LIMIT_PATTERN = r'You are downloading another file at this moment.'
+    OFFLINE_PATTERN      = r'Invalid Link|Link Expired|This file was deleted'
+    TEMP_OFFLINE_PATTERN = r'You are downloading another file at this moment'
+    PREMIUM_ONLY_PATTERN = r'This file is only available for premium users'
 
-    def setup(self):
-        self.resumeDownload = True
-        self.multiDL        = self.premium
+    DIRECT_LINK = False
+    DISPOSITION = False
+
 
     def handle_free(self, pyfile):
-        self.check_errors()
-        self.req.http.lastURL = pyfile.url
-        self.req.http.c.setopt(pycurl.HTTPHEADER, ["X-Requested-With: XMLHttpRequest"])
+        m = re.search(r'<span class="time">([\d:]+)<', self.data)
+        if m:
+            wait_time = sum(int(_d) * 60 ** _i for _i, _d in enumerate(reversed(m.group(1).split(':'))))
 
-        parse = urlparse(pyfile.url)
-        base = parse.scheme + '://' + parse.netloc
-        ajax_target = base + '/files/ajax.html'
-        
-        m = re.search(self.DELAY_PATTERN, self.data)
-        if m is not None:
-            delay = m.group('time')
         else:
-            # default delay to 2min
-            delay = 120
-        
-        m = re.search(r'google.com/recaptcha/api/challenge.*"', self.data)
-        self.log_debug('found captcha: %s' % m.group(0))
-        
-        recaptcha = ReCaptcha(self)
-        response, challenge = recaptcha.challenge()
+            wait_time = 0
 
-        jsvars = self.getJsonResponse(ajax_target,
-                                      post={'doaction' : "validateCaptcha",
-                                            'recaptcha_challenge_field': challenge,
-                                            'recaptcha_response_field': response,
-                                            'fileid'  : self.info['pattern']['ID']},
-                                      decode=True) 
+        self.captcha = ReCaptcha(pyfile)
+        captcha_key  = self.captcha.detect_key()
 
-        
-        if jsvars['success'] == 1:
-            token = jsvars['token']
+        if captcha_key:
+            response, challenge = self.captcha.challenge(captcha_key)
+
+            post_data = {'doaction'                 : "validateCaptcha",
+                         'recaptcha_challenge_field': challenge,
+                         'recaptcha_response_field' : response,
+                         'fileid'                   : self.info['pattern']['ID']}
+
+            catcha_result = json.loads(self.load("http://www.datafile.com/files/ajax.html", post=post_data))
+
+            if not catcha_result['success']:
+                self.retry_captcha()
+
             self.captcha.correct()
+
+            self.wait(wait_time)
+
+            post_data['doaction'] = "getFileDownloadLink"
+            post_data['token']    = catcha_result['token']
+
+            file_info = json.loads(self.load("http://www.datafile.com/files/ajax.html", post=post_data))
+            if file_info['success']:
+                self.link = file_info['link']
+                self.log_debug("URL:%s" % file_info['link'])
+
         else:
-            self.retry_captcha()
-        
-        self.log_debug('captcha was good, got token %s, now waiting %s seconds' % (str(token), str(delay)) )
-        self.wait(delay)
- 
-        jsvars = self.getJsonResponse(ajax_target,
-                                      post={'doaction' : "getFileDownloadLink",
-                                            'recaptcha_challenge_field': challenge,
-                                            'recaptcha_response_field': response,
-                                            'token' : token,
-                                            'fileid' : self.info['pattern']['ID']},
-                                      decode=True)
-        
-        if 'success' in jsvars and jsvars['success'] == 1:
-            self.link = jsvars['link']
-        else:
-            self.error(_("Free download link not found"))
+            m = re.search(r'error\.html\?code=(\d+)', self.req.lastEffectiveURL)
+            if m:
+                error_code = int(m.group(1))
+                if error_code in (2, 3):
+                    self.offline()
 
+                elif error_code == 7:
+                    wait_time = seconds_to_midnight()
+                    self.retry(wait=wait_time, msg=_("Download limit exceeded"))
 
-    def getJsonResponse(self, *args, **kwargs):
-        res = self.load(*args, **kwargs)
-        if not res.startswith('{'):
-            self.retry()
+                elif error_code == 9:
+                    self.temp_offline()
 
-        self.log_debug(res)
-
-        return json_loads(res)
+                else:
+                    self.log_debug("Unknown error code %s" % error_code)
 
 

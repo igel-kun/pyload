@@ -9,16 +9,16 @@ from module.plugins.captcha.AdsCaptcha import AdsCaptcha
 from module.plugins.captcha.ReCaptcha import ReCaptcha
 from module.plugins.captcha.SolveMedia import SolveMedia
 from module.plugins.internal.SimpleHoster import SimpleHoster
-from module.plugins.internal.misc import json
+from module.plugins.internal.misc import json, seconds_to_midnight
 
 
 class RapidgatorNet(SimpleHoster):
     __name__    = "RapidgatorNet"
     __type__    = "hoster"
-    __version__ = "0.40"
+    __version__ = "0.44"
     __status__  = "testing"
 
-    __pattern__ = r'http://(?:www\.)?(rapidgator\.net|rg\.to)/file/\w+'
+    __pattern__ = r'http://(?:www\.)?(?:rapidgator\.net|rg\.to)/file/\w+'
     __config__  = [("activated"   , "bool", "Activated"                                        , True),
                    ("use_premium" , "bool", "Use premium account if available"                 , True),
                    ("fallback"    , "bool", "Fallback to free download if premium fails"       , True),
@@ -27,10 +27,11 @@ class RapidgatorNet(SimpleHoster):
 
     __description__ = """Rapidgator.net hoster plugin"""
     __license__     = "GPLv3"
-    __authors__     = [("zoidberg", "zoidberg@mujmail.cz"),
-                       ("chrox", None),
-                       ("stickell", "l.stickell@yahoo.it"),
-                       ("Walter Purcaro", "vuolter@gmail.com")]
+    __authors__     = [("zoidberg",       "zoidberg@mujmail.cz"       ),
+                       ("chrox",          None                        ),
+                       ("stickell",       "l.stickell@yahoo.it"       ),
+                       ("Walter Purcaro", "vuolter@gmail.com"         ),
+                       ("GammaCode",      "nitzo2001[AT]yahoo[DOT]com")]
 
 
     API_URL = "http://rapidgator.net/api/file"
@@ -52,6 +53,8 @@ class RapidgatorNet(SimpleHoster):
     RECAPTCHA_PATTERN  = r'"http://api\.recaptcha\.net/challenge\?k=(.*?)"'
     ADSCAPTCHA_PATTERN = r'(http://api\.adscaptcha\.com/Get\.aspx[^"\']+)'
     SOLVEMEDIA_PATTERN = r'http://api\.solvemedia\.com/papi/challenge\.script\?k=(.*?)"'
+
+    URL_REPLACEMENTS = [(r'//(?:www\.)?rg\.to/', "//rapidgator.net/")]
 
 
     def setup(self):
@@ -86,8 +89,7 @@ class RapidgatorNet(SimpleHoster):
             return json_data['response']
 
         elif status == 423:
-            self.account.empty()
-            self.retry()
+            self.restart(msg=json_data['response_details'], premium=False)
 
         else:
             self.account.relogin()
@@ -102,6 +104,19 @@ class RapidgatorNet(SimpleHoster):
         pyfile.size = self.api_data['size']
 
         self.link = self.api_response('download')['url']
+
+
+    def check_errors(self):
+        super(RapidgatorNet, self).check_errors()
+        m = re.search(self.DOWNLOAD_LIMIT_ERROR_PATTERN, self.data)
+        if m:
+            self.log_warning(m.group(0))
+            if m.group(1) == "daily":
+                wait_time = seconds_to_midnight()
+            else:
+                wait_time = 1 * 60 * 60
+
+            self.retry(wait=wait_time, msg=m.group(0))
 
 
     def handle_free(self, pyfile):
@@ -149,7 +164,9 @@ class RapidgatorNet(SimpleHoster):
             if "The verification code is incorrect" in self.data:
                 self.retry_captcha()
             else:
-                self.captcha.correct()
+                m = re.search(self.LINK_FREE_PATTERN, self.data)
+                if m is not None:
+                    self.link = m.group(1)
 
         # retry link detection
         m = re.search(self.LINK_FREE_PATTERN, self.data)

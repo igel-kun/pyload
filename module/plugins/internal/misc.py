@@ -38,7 +38,7 @@ except ImportError:
 class misc(object):
     __name__    = "misc"
     __type__    = "plugin"
-    __version__ = "0.29"
+    __version__ = "0.35"
     __status__  = "stable"
 
     __pattern__ = r'^unmatchable$'
@@ -55,7 +55,7 @@ class Config(object):
         self.plugin = plugin
 
 
-    def set(self, option, value):
+    def set(self, option, value, plugin=None):
         """
         Set config value for current plugin
 
@@ -63,10 +63,10 @@ class Config(object):
         :param value:
         :return:
         """
-        self.plugin.pyload.api.setConfigValue(self.plugin.classname, option, value, section="plugin")
+        self.plugin.pyload.api.setConfigValue(plugin or self.plugin.classname, option, value, section="plugin")
 
 
-    def get(self, option, default=None):
+    def get(self, option, default=None, plugin=None):
         """
         Returns config value for current plugin
 
@@ -74,7 +74,7 @@ class Config(object):
         :return:
         """
         try:
-            return self.plugin.pyload.config.getPlugin(self.plugin.classname, option)
+            return self.plugin.pyload.config.getPlugin(plugin or self.plugin.classname, option)
 
         except KeyError:
             self.plugin.log_debug("Config option `%s` not found, use default `%s`" % (option, default))  #@TODO: Restore to `log_warning` in 0.4.10
@@ -91,8 +91,7 @@ class DB(object):
         """
         Saves a value persistently to the database
         """
-        value = map(decode, value) if isiterable(value) else decode(value)
-        entry = json.dumps(value).encode('base64')
+        entry = json.dumps(value, ensure_ascii=False).encode('base64')
         self.plugin.pyload.db.setStorage(self.plugin.classname, key, entry)
 
 
@@ -335,9 +334,9 @@ def uniqify(seq):
 
 def has_method(obj, name):
     """
-    Check if name was defined in obj (return false if inhereted)
+    Check if function 'name' was defined in obj
     """
-    return hasattr(obj, '__dict__') and name in obj.__dict__
+    return callable(getattr(obj, name, None))
 
 
 def html_unescape(text):
@@ -766,7 +765,9 @@ def parse_html_form(attr_str, html, input_names={}):
         action = parse_html_tag_attr_value("action", form.group('TAG'))
 
         for inputtag in re.finditer(r'(<(input|textarea).*?>)([^<]*(?=</\2)|)',
-                                    re.sub(r'<!--.+?-->', "", form.group('CONTENT'), 0 , re.I | re.S), re.I | re.S):
+                                    re.sub(re.compile(r'<!--.+?-->', re.I | re.S), "", form.group('CONTENT')),
+                                    re.I | re.S):
+
             name = parse_html_tag_attr_value("name", inputtag.group(1))
             if name:
                 value = parse_html_tag_attr_value("value", inputtag.group(1))

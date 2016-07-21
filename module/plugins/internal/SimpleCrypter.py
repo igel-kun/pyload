@@ -11,7 +11,7 @@ from module.plugins.internal.misc import parse_name, replace_patterns
 class SimpleCrypter(Crypter):
     __name__    = "SimpleCrypter"
     __type__    = "crypter"
-    __version__ = "0.84"
+    __version__ = "0.85"
     __status__  = "testing"
 
     __pattern__ = r'^unmatchable$'
@@ -147,7 +147,7 @@ class SimpleCrypter(Crypter):
         self.__class__.__name__ = class_name
 
 
-    def handle_direct(self, pyfile):
+    def handle_direct(self):
         self._preload()
 
         link = self.last_header.get('url')
@@ -190,12 +190,12 @@ class SimpleCrypter(Crypter):
         self.pyfile.url = replace_patterns(self.pyfile.url, self.URL_REPLACEMENTS)
 
 
-    def decrypt(self, pyfile):
+    def decrypt(self):
         self._prepare()
 
         if self.direct_dl:
             self.log_info(_("Looking for direct link..."))
-            self.handle_direct(pyfile)
+            self.handle_direct()
 
             if self.links or self.packages:
                 self.log_info(_("Direct link detected"))
@@ -206,13 +206,14 @@ class SimpleCrypter(Crypter):
             self._preload()
             self.check_errors()
 
-            self.get_links(pyfile)
+            links = self.get_links()
+            self.links.extend(links)
 
             if self.PAGES_PATTERN:
-                self.handle_pages(pyfile)
+                self.handle_pages()
 
 
-    def handle_free(self, pyfile):
+    def handle_free(self):
         if not self.LINK_FREE_PATTERN:
             self.log_warning(_("Free decrypting not implemented"))
 
@@ -223,7 +224,7 @@ class SimpleCrypter(Crypter):
             self.links.extend(links)
 
 
-    def handle_premium(self, pyfile):
+    def handle_premium(self):
         if not self.LINK_PREMIUM_PATTERN:
             self.log_warning(_("Premium decrypting not implemented"))
             self.restart(premium=False)
@@ -235,27 +236,30 @@ class SimpleCrypter(Crypter):
             self.links.extend(links)
 
 
-    def get_links(self, pyfile):
+    def get_links(self):
         """
         Returns the links extracted from self.data
         You should override this only if it's impossible to extract links using only the LINK_PATTERN.
         """
         if self.premium:
             self.log_info(_("Decrypting as premium link..."))
-            self.handle_premium(self.pyfile)
+            self.handle_premium()
 
         elif not self.LOGIN_ACCOUNT:
             self.log_info(_("Decrypting as free link..."))
-            self.handle_free(self.pyfile)
+            self.handle_free()
 
-        return self.links
+        links = self.links
+        self.links = []
+
+        return links
 
 
     def load_page(self, number):
         raise NotImplementedError
 
 
-    def handle_pages(self, pyfile):
+    def handle_pages(self):
         try:
             pages = int(re.search(self.PAGES_PATTERN, self.data).group(1))
 
@@ -265,7 +269,7 @@ class SimpleCrypter(Crypter):
         for p in xrange(2, pages + 1):
             self.data = self.load_page(p)
             # get_links is already incremental, no need to extend links again
-            self.get_links(pyfile)
+            self.get_links()
 
 
     def check_errors(self):

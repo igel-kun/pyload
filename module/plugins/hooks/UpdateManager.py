@@ -15,7 +15,7 @@ from module.plugins.internal.misc import encode, exists, Expose, fsjoin, threade
 class UpdateManager(Addon):
     __name__    = "UpdateManager"
     __type__    = "hook"
-    __version__ = "1.10"
+    __version__ = "1.14"
     __status__  = "testing"
 
     __config__ = [("activated"    , "bool", "Activated"                                , True ),
@@ -33,7 +33,8 @@ class UpdateManager(Addon):
 
     _VERSION = re.compile(r'^\s*__version__\s*=\s*("|\')([\d.]+)\1', re.M)
 
-    SERVER_URL     = "http://updatemanager.pyload.org"
+    # SERVER_URL     = "http://updatemanager.pyload.org"
+    SERVER_URL     = "http://updatemanager-spyload.rhcloud.com"
     CHECK_INTERVAL = 3 * 60 * 60  #: 3 hours
 
 
@@ -170,11 +171,14 @@ class UpdateManager(Addon):
             self.log_info(_("pyLoad is up to date!"))
             exitcode = self.update_plugins()
 
-        else:
+        elif re.search(r'^\d+(?:\.\d+){0,3}[a-z]?$', newversion):
             self.log_info(_("***  New pyLoad %s available  ***") % newversion)
             self.log_info(_("***  Get it here: https://github.com/pyload/pyload/releases  ***"))
             self.info['pyload'] = True
             exitcode = 3
+
+        else:
+            exitcode = 0
 
         #: Exit codes:
         #:  -1 = No plugin updated, new pyLoad version available
@@ -283,7 +287,12 @@ class UpdateManager(Addon):
             plugins = getattr(self.pyload.pluginManager, "%sPlugins" % plugin_type.rstrip('s'))  #@TODO: Remove rstrip in 0.4.10
 
             oldver = float(plugins[plugin_name]['v']) if plugin_name in plugins else None
-            newver = float(plugin_version)
+            try:
+                newver = float(plugin_version)
+            except ValueError:
+                self.log_error(_("Error updating plugin: %s %s") % (plugin_type.rstrip('s').upper(), plugin_name),
+                               _("Bad version number on the server"))
+                continue
 
             if not oldver:
                 msg = "New plugin: %(type)s %(name)s (v%(newver).2f)"

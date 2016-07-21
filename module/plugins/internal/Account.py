@@ -12,7 +12,7 @@ from module.plugins.internal.misc import Periodical, compare_time, decode, isite
 class Account(Plugin):
     __name__    = "Account"
     __type__    = "account"
-    __version__ = "0.72"
+    __version__ = "0.75"
     __status__  = "stable"
 
     __description__ = """Base account plugin"""
@@ -116,7 +116,7 @@ class Account(Plugin):
             self.signin(self.user, self.info['login']['password'], self.info['data'])
 
         except Skip, e:
-            self.log_warning(_("Skipped login user `%s`"), e)
+            self.log_warning(_("Skipped login user `%s`") % self.user, e)
             self.info['login']['valid'] = True
 
             new_timeout = timestamp - self.info['login']['timestamp']
@@ -203,7 +203,7 @@ class Account(Plugin):
                 refresh = False
                 self.reset()
 
-        if refresh:
+        if refresh and self.info['login']['valid']:
             self.log_info(_("Grabbing account info for user `%s`...") % self.user)
             self.info = self._grab_info()
 
@@ -367,9 +367,11 @@ class Account(Plugin):
                                      % (user, time_data))
 
             if data['trafficleft'] == 0:
+                self.log_warning(_("Not using account `%s` because the account has no traffic left") % user)
                 continue
 
             if time.time() > data['validuntil'] > 0:
+                self.log_warning(_("Not using account `%s` because the account has expired") % user)
                 continue
 
             if data['premium']:

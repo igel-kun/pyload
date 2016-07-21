@@ -9,7 +9,7 @@ from module.plugins.internal.Hoster import Hoster
 class Http(Hoster):
     __name__    = "Http"
     __type__    = "hoster"
-    __version__ = "0.06"
+    __version__ = "0.07"
     __status__  = "testing"
 
     __pattern__ = r'(?:jd|pys?)://.+'
@@ -29,13 +29,8 @@ class Http(Hoster):
         url    = re.sub(r'^(jd|py)', "http", pyfile.url)
         netloc = urlparse.urlparse(url).netloc
 
-        link = self.isresource(url)
-
-        if not link:
-            return
-
         for _i in xrange(2):
-            self.download(link, ref=False, disposition=True)
+            self.download(url, ref=False, disposition=True)
 
             if self.req.code in (404, 410):
                 self.offline()

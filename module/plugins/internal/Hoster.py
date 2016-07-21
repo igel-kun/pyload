@@ -3,7 +3,6 @@
 from __future__ import with_statement
 
 import __builtin__
-import hashlib
 import mimetypes
 import os
 import re
@@ -34,7 +33,7 @@ if not hasattr(__builtin__.property, "setter"):
 class Hoster(Base):
     __name__    = "Hoster"
     __type__    = "hoster"
-    __version__ = "0.57"
+    __version__ = "0.59"
     __status__  = "stable"
 
     __pattern__ = r'^unmatchable$'
@@ -168,7 +167,6 @@ class Hoster(Base):
         elif extension:
             mimetype = mimetypes.guess_type(extension, False)[0] or \
                        "application/octet-stream"
-
         else:
             mimetype = None
 
@@ -176,7 +174,7 @@ class Hoster(Base):
             resource = url
         else:
             resource = False
-        
+
         return resource
 
     def isresource(self, url):
@@ -215,6 +213,11 @@ class Hoster(Base):
             newname = self.req.httpDownload(url, file, get, post,
                                             ref, cookies, chunks, resume,
                                             self.pyfile.setProgress, disposition)
+
+        except IOError, e:
+            self.log_error(e.message)
+            self.fail(_("IOError %s") % e.errno)
+
         except BadHeader, e:
             self.req.http.code = e.code
             raise
@@ -332,7 +335,7 @@ class Hoster(Base):
             content = f.read(read_size)
 
         #: Produces encoding errors, better log to other file in the future?
-        # self.log_debug("Content: %s" % content)
+        # self.log_debug(_("Content: %s") % content)
         for name, rule in rules.items():
             if isinstance(rule, basestring):
                 if rule in content:

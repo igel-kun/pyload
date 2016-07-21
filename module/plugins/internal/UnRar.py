@@ -12,7 +12,7 @@ from module.plugins.internal.misc import decode, encode, fsjoin, renice
 class UnRar(Extractor):
     __name__    = "UnRar"
     __type__    = "extractor"
-    __version__ = "1.31"
+    __version__ = "1.33"
     __status__  = "testing"
 
     __description__ = """RAR extractor plugin"""
@@ -23,12 +23,12 @@ class UnRar(Extractor):
 
 
     CMD        = "unrar"
-    EXTENSIONS = ["rar", "zip", "cab", "arj", "lzh", "tar", "gz", "ace", "uue",
-                  "bz2", "jar", "iso", "7z", "xz", "z"]
+    EXTENSIONS = ["rar", "cab", "arj", "lzh", "tar", "gz", "ace", "uue",
+                  "bz2", "jar", "iso", "xz", "z"]
 
     _RE_PART    = re.compile(r'\.(part|r)\d+(\.rar|\.rev)?(\.bad)?', re.I)
     _RE_FIXNAME = re.compile(r'Building (.+)')
-    _RE_FILES   = re.compile(r'^(.)(\s*[\w\-.]+)\s+(\d+\s+)+(?:\d+\%\s+)?[\d\-]{8}\s+[\d\:]{5}', re.I | re.M)
+    _RE_FILES = re.compile(r'^(.)(\s*[\w\-.]+)\s+(\d+\s+)+(?:\d+\%\s+)?[\d\-]{8,}\s+[\d\:]{5}', re.I | re.M)
     _RE_BADPWD  = re.compile(r'password', re.I)
     _RE_BADCRC  = re.compile(r'encrypted|damaged|CRC failed|checksum error|corrupt', re.I)
     _RE_VERSION = re.compile(r'(?:UN)?RAR\s(\d+\.\d+)', re.I)
@@ -123,7 +123,7 @@ class UnRar(Extractor):
                 break
             #: Reading a percentage sign -> set progress and restart
             if c == "%":
-                self.notifyprogress(int(s))
+                self.pyfile.setProgress(int(s))
                 s = ""
             #: Not reading a digit -> therefore restart
             elif c not in string.digits:
@@ -154,6 +154,8 @@ class UnRar(Extractor):
 
         if p.returncode:
             raise ArchiveError(_("Process return code: %d") % p.returncode)
+
+        return self.list(password)
 
 
     def chunks(self):
@@ -192,7 +194,8 @@ class UnRar(Extractor):
             for f in decode(out).splitlines():
                 result.add(fsjoin(self.dest, f.strip()))
 
-        return list(result)
+        self.files = list(result)
+        return self.files
 
 
     def call_cmd(self, command, *xargs, **kwargs):
@@ -206,7 +209,7 @@ class UnRar(Extractor):
             args.append("-or")
 
         for word in self.excludefiles:
-            args.append("-x'%s'" % word.strip())
+            args.append("-x%s" % word.strip())
 
         #: Assume yes on all queries
         args.append("-y")
