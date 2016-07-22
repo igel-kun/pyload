@@ -43,7 +43,7 @@ class SerienjunkiesOrg(Crypter):
         src = self.getSJSrc(url)
         soup = BeautifulSoup(src)
         packageName = self.pyfile.package().name
-        if self.getConfig("changeNameSJ") == "Show":
+        if self.config.get("changeNameSJ") == "Show":
             found = unescape(soup.find("h2").find("a").string.split(' &#8211;')[0])
             if found:
                 packageName = found
@@ -52,11 +52,11 @@ class SerienjunkiesOrg(Crypter):
 
         package_links = []
         for a in nav.findAll("a"):
-            if self.getConfig("changeNameSJ") == "Show":
+            if self.config.get("changeNameSJ") == "Show":
                 package_links.append(a["href"])
             else:
                 package_links.append(a["href"] + "#hasName")
-        if self.getConfig("changeNameSJ") == "Show":
+        if self.config.get("changeNameSJ") == "Show":
             self.packages.append((packageName, package_links, packageName))
         else:
             self.core.files.addLinks(package_links, self.pyfile.package().id)
@@ -109,16 +109,16 @@ class SerienjunkiesOrg(Crypter):
         for g in groups.values():
             for ename in g["ep"]:
                 links.extend(self.getpreferred(g["ep"][ename]))
-                if self.getConfig("changeNameSJ") == "Episode":
+                if self.config.get("changeNameSJ") == "Episode":
                     self.packages.append((ename, links, ename))
                     links = []
             package = "%s (%s, %s)" % (seasonName, g["opts"]["Format"], g["opts"]["Sprache"])
-            if self.getConfig("changeNameSJ") == "Format":
+            if self.config.get("changeNameSJ") == "Format":
                 self.packages.append((package, links, package))
                 links = []
-        if (self.getConfig("changeNameSJ") == "Packagename") or re.search("#hasName", url):
+        if (self.config.get("changeNameSJ") == "Packagename") or re.search("#hasName", url):
             self.core.files.addLinks(links, self.pyfile.package().id)
-        elif (self.getConfig("changeNameSJ") == "Season") or not re.search("#hasName", url):
+        elif (self.config.get("changeNameSJ") == "Season") or not re.search("#hasName", url):
             self.packages.append((seasonName, links, seasonName))
 
     def handle_episode(self, url):
@@ -158,8 +158,8 @@ class SerienjunkiesOrg(Crypter):
             for link in rawLinks:
                 frameUrl = link["action"].replace("/go-", "/frame/go-")
                 links.append(self.handle_frame(frameUrl))
-            if re.search("#hasName", url) or ((self.getConfig("changeNameSJ") == "Packagename") and
-                                              (self.getConfig("changeNameDJ") == "Packagename")):
+            if re.search("#hasName", url) or ((self.config.get("changeNameSJ") == "Packagename") and
+                                              (self.config.get("changeNameDJ") == "Packagename")):
                 self.core.files.addLinks(links, self.pyfile.package().id)
             else:
                 if h1.text[2] == "_":
@@ -239,16 +239,16 @@ class SerienjunkiesOrg(Crypter):
         for g in groups.values():
             for ename in g["ep"]:
                 links.extend(self.getpreferred(g["ep"][ename]))
-                if self.getConfig("changeNameDJ") == "Episode":
+                if self.config.get("changeNameDJ") == "Episode":
                     self.packages.append((ename, links, ename))
                     links = []
             package = "%s (%s, %s)" % (seasonName, g["opts"]["Format"], g["opts"]["Sprache"])
-            if self.getConfig("changeNameDJ") == "Format":
+            if self.config.get("changeNameDJ") == "Format":
                 self.packages.append((package, links, package))
                 links = []
-        if (self.getConfig("changeNameDJ") == "Packagename") or re.search("#hasName", url):
+        if (self.config.get("changeNameDJ") == "Packagename") or re.search("#hasName", url):
             self.core.files.addLinks(links, self.pyfile.package().id)
-        elif (self.getConfig("changeNameDJ") == "Show") or not re.search("#hasName", url):
+        elif (self.config.get("changeNameDJ") == "Show") or not re.search("#hasName", url):
             self.packages.append((seasonName, links, seasonName))
 
     def handle_categoryDJ(self, url):
@@ -288,10 +288,10 @@ class SerienjunkiesOrg(Crypter):
     def getpreferred(self, hosterlist):
 
         result = []
-        preferredList = self.getConfig("hosterList").strip().lower().replace(
+        preferredList = self.config.get("hosterList").strip().lower().replace(
             '|', ',').replace('.', '').replace(';', ',').split(',')
-        if (self.getConfig("randomPreferred") is True) and (
-                self.getConfig("hosterListMode") in ["OnlyOne", "OnlyPreferred(One)"]):
+        if (self.config.get("randomPreferred") is True) and (
+                self.config.get("hosterListMode") in ["OnlyOne", "OnlyPreferred(One)"]):
             random.shuffle(preferredList)
             # we don't want hosters be read two times
         hosterlist2 = hosterlist.copy()
@@ -303,18 +303,18 @@ class SerienjunkiesOrg(Crypter):
                         self.log_debug("selected " + Part)
                         result.append(str(Part))
                         del (hosterlist2[Hoster])
-                    if self.getConfig("hosterListMode") in ["OnlyOne", "OnlyPreferred(One)"]:
+                    if self.config.get("hosterListMode") in ["OnlyOne", "OnlyPreferred(One)"]:
                         return result
 
-        ignorelist = self.getConfig("ignoreList").strip().lower().replace(
+        ignorelist = self.config.get("ignoreList").strip().lower().replace(
             '|', ',').replace('.', '').replace(';', ',').split(',')
-        if self.getConfig('hosterListMode') in ["OnlyOne", "All"]:
+        if self.config.get('hosterListMode') in ["OnlyOne", "All"]:
             for Hoster in hosterlist2:
                 if Hoster.strip().lower().replace('.', '') not in ignorelist:
                     for Part in hosterlist2[Hoster]:
                         self.log_debug("selected2 " + Part)
                         result.append(str(Part))
 
-                    if self.getConfig('hosterListMode') == "OnlyOne":
+                    if self.config.get('hosterListMode') == "OnlyOne":
                         return result
         return result
