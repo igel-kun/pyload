@@ -140,7 +140,7 @@ class Movie2kTo(Crypter):
         self.getInfo(url_path)
 
         if (self.format == 'movie') or (self.format == 'episode'):
-            if(self.get_config('whole_season') and (self.format == 'episode')):
+            if(self.config.get('whole_season') and (self.format == 'episode')):
               self.handle_season_from_episode(url_path)
             else:
               links = self.getLinks(url_path)
@@ -156,8 +156,8 @@ class Movie2kTo(Crypter):
     ## This function returns the links for one episode/movie as list
     def getLinks(self, url_path):
         # read config
-        hoster_blacklist = re.findall(r'\b(\w+?)\b', self.get_config('hoster_blacklist'))
-        firstN = self.get_config('firstN')
+        hoster_blacklist = re.findall(r'\b(\w+?)\b', self.config.get('hoster_blacklist'))
+        firstN = self.config.get('firstN')
         links = []
         # prepare patterns:
         # The quality is one digit. 0 is the worst and 5 is the best. It's not always there.
@@ -230,7 +230,7 @@ class Movie2kTo(Crypter):
     def qStat(self):
         if len(self.q) == 0:
             return ''
-        if not self.get_config('dir_quality'):
+        if not self.config.get('dir_quality'):
             return ''
         if len(self.q) == 1:
             return ' (Quality: %d)' % self.q[0]

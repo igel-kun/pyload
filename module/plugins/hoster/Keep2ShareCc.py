@@ -47,15 +47,29 @@ class Keep2ShareCc(SimpleHoster):
     ERROR_PATTERN        = r'>\s*(Free user can\'t download large files|You no can access to this file|This download available only for premium users|This is private file)'
 
 
+    # a problem with keep2share is that it sometimes forwards requests to other URLs (like k2s)
+    # for example:
+    # if we try to download a file from keep2s.cc but get forwarded to k2s.cc,
+    # then, the download request goes to k2s.cc but the captcha request goes to keep2s.cc
+    # this causes correctly solved captchas to be considered wrong :(
+    # to combat this, the following function follows all redirects and updates self.pyfile.url
+    def update_url(self):
+        header = self.load(self.pyfile.url, just_header = True)
+        while 'location' in header:
+            self.log_debug('got redirected to %s' % str(header['location']))
+            self.pyfile.url = header['location']
+            header = self.load(self.pyfile.url, just_header = True)
+
 
     def handle_free(self, pyfile):
+        self.update_url()
         self.check_errors()
 
         self.fid  = re.search(r'<input type="hidden" name="slow_id" value="(.+?)">', self.data).group(1)
         self.data = self.load(pyfile.url, post={'yt0': '', 'slow_id': self.fid})
 
         # self.log_debug(self.fid)
-        # self.log_debug(pyfile.url)
+        self.log_debug('URL: %s' % pyfile.url)
         
         self.check_errors()
 
@@ -106,6 +120,8 @@ class Keep2ShareCc(SimpleHoster):
         self.data = self.load(self.pyfile.url, post=post_data)
 
         if 'verification code is incorrect' in self.data:
+            self.log_debug("here's what we've got: ")
+            self.log_debug(self.data)
             self.retry_captcha()
         else:
             self.captcha.correct()

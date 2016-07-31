@@ -592,7 +592,7 @@ def parse_time(value):
     if re.search("da(il)?y|today", value):
         seconds = seconds_to_midnight()
 
-    elif re.search(":", value):
+    elif re.search("\d:\d\d", value):
         # use the HH:MM:SS format
         factor_arr = [3600,60,1]
         value = re.sub("[^:0-9]","", value)
