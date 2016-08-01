@@ -9,7 +9,7 @@ from module.plugins.internal.Account import Account
 class UploadedTo(Account):
     __name__    = "UploadedTo"
     __type__    = "account"
-    __version__ = "0.43"
+    __version__ = "0.44"
     __status__  = "testing"
 
     __description__ = """Uploaded.to account plugin"""
@@ -31,7 +31,6 @@ class UploadedTo(Account):
         if premium:
             validuntil = None
             trafficleft = None
-            premium = None
 
             m = re.search(self.VALID_UNTIL_PATTERN, html, re.M)
             if m is not None:
