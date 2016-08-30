@@ -33,7 +33,6 @@ class RapidgatorNet(SimpleHoster):
                        ("Walter Purcaro", "vuolter@gmail.com"         ),
                        ("GammaCode",      "nitzo2001[AT]yahoo[DOT]com")]
 
-
     API_URL = "http://rapidgator.net/api/file"
 
     COOKIES = [("rapidgator.net", "lang", "en")]
@@ -44,11 +43,11 @@ class RapidgatorNet(SimpleHoster):
 
     JSVARS_PATTERN = r'\s+var\s*(startTimerUrl|getDownloadUrl|captchaUrl|fid|secs)\s*=\s*\'?(.*?)\'?;'
 
-    PREMIUM_ONLY_PATTERN = r'You can download files up to|This file can be downloaded by premium only<'
-    ERROR_PATTERN        = r'You have reached your (?:daily|hourly) downloads limit'
-    WAIT_PATTERN         = r'(Delay between downloads must be not less than|Try again in|file at a time in free mode).+'
+    PREMIUM_ONLY_PATTERN         = r'You can download files up to|This file can be downloaded by premium only<'
+    DOWNLOAD_LIMIT_ERROR_PATTERN = r'(?:You have reached your (?P<time>daily|hourly) downloads limit|more than 1 file at a time in free mode)'
+    WAIT_PATTERN                 = r'(?:Delay between downloads must be not less than|Try again in).+'
 
-    LINK_FREE_PATTERN = r"return '(http://\w+.rapidgator.net/.*)';"
+    LINK_FREE_PATTERN = r'return \'(http://\w+.rapidgator.net/.*)\';'
 
     RECAPTCHA_PATTERN  = r'"http://api\.recaptcha\.net/challenge\?k=(.*?)"'
     ADSCAPTCHA_PATTERN = r'(http://api\.adscaptcha\.com/Get\.aspx[^"\']+)'
@@ -56,34 +55,44 @@ class RapidgatorNet(SimpleHoster):
 
     URL_REPLACEMENTS = [(r'//(?:www\.)?rg\.to/', "//rapidgator.net/")]
 
-
     def setup(self):
         if self.account:
             self.sid = self.account.get_data('sid')
+            self.premium = self.account.get_data('premium')
+            self.log_debug('found account, but is it premium? %s' % str(self.premium))
         else:
             self.sid = None
-
-        if self.sid:
-            self.premium = True
+            self.premium = False
 
         self.resume_download = self.multiDL = self.premium
         self.chunk_limit     = 1
 
 
     def api_response(self, cmd):
+        # prepare the json data for the case that an exception is being thrown
+        json_data = {'response_status':500, 'response_details':'unknown error'}
         try:
             html = self.load('%s/%s' % (self.API_URL, cmd),
                              get={'sid': self.sid,
                                   'url': self.pyfile.url})
             self.log_debug("API:%s" % cmd, html, "SID: %s" % self.sid)
             json_data = json.loads(html)
+        except BadHeader, e:
+            html = e.content
+            self.log_debug("API:%s" % cmd, html, "SID: %s" % self.sid)
+            json_data = json.loads(html)
+            if 'response_details' in json_data:
+                self.data = json_data['response_details']
+                self.check_errors()
+            if 'response' in json_data:
+                if json_data['response']:
+                    return json_data['response']
+                #TODO: anything else to do here?
+            else:
+                raise
+        finally:
             status = json_data['response_status']
             msg = json_data['response_details']
-
-        except BadHeader, e:
-            self.log_error("API: %s" % cmd, e, "SID: %s" % self.sid)
-            status = e.code
-            msg = e
 
         if status == 200:
             return json_data['response']
@@ -103,15 +112,28 @@ class RapidgatorNet(SimpleHoster):
         pyfile.name = self.api_data['filename']
         pyfile.size = self.api_data['size']
 
-        self.link = self.api_response('download')['url']
+        self.api_data.update(self.api_response('download'))
+        # NOTE: we have to remove the 'hash' field otherwise, Checksum gets confused trying to add [key] to the unicode object data['hash']
+        if 'hash' in self.api_data:
+            if not 'md5' in self.api_data:
+                self.api_data['md5'] = self.api_data['hash']
+            del self.api_data['hash']
+        
+        self.link = self.api_data['url']
 
+    def handle_free_account(self, pyfile):
+        self.handle_premium(pyfile)
+        #TODO handle large wait times here
+        waittime = self.api_data['delay']
+        self.log_debug('waiting %s sec' % waittime)
+        self.wait(int(waittime))
 
     def check_errors(self):
         super(RapidgatorNet, self).check_errors()
         m = re.search(self.DOWNLOAD_LIMIT_ERROR_PATTERN, self.data)
         if m:
             self.log_warning(m.group(0))
-            if m.group(1) == "daily":
+            if m.group('time') == "daily":
                 wait_time = seconds_to_midnight()
             else:
                 wait_time = 1 * 60 * 60
@@ -120,6 +142,9 @@ class RapidgatorNet(SimpleHoster):
 
 
     def handle_free(self, pyfile):
+        if self.sid:
+            return self.handle_free_account(pyfile)
+
         self.check_errors()
 
         jsvars = dict(re.findall(self.JSVARS_PATTERN, self.data))
