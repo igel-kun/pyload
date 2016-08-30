@@ -21,6 +21,10 @@ import urllib
 import urlparse
 import xml.sax.saxutils  #@TODO: Remove in 0.4.10
 import zlib
+import tempfile
+import subprocess
+
+from module.common.JsEngine import JsEngine
 
 try:
     import simplejson as json
@@ -593,10 +597,10 @@ def parse_time(value):
         seconds = seconds_to_midnight()
 
     elif re.search("\d:\d\d", value):
-        # use the HH:MM:SS format
-        factor_arr = [3600,60,1]
+        # use the HH:MM:SS format, NOTE: when only one ':' is found, it assumes MM:SS
+        factor_arr = [1,60,3600]
         value = re.sub("[^:0-9]","", value)
-        seconds = sum([u*v for u,v in zip(factor_arr, map(int,value.split(':')))])
+        seconds = sum([u*v for u,v in zip(factor_arr, map(int,value.split(':')[::-1]))])
 
     else:
         regex   = re.compile(r'(\d+| (?:this|an?) )\s*(hr|hour|min|sec|)', re.I)
@@ -937,3 +941,14 @@ def move_tree(src, dst, overwrite=False):
             os.rmdir(src_dir)
         except OSError:
             pass
+
+
+# TODO: use pyexecjs?
+def eval_js_script(script):
+    """ run a javascript program given as parameter and return the output """
+    js = JsEngine()
+    return js.eval(script)
+
+def get_domain(url):
+    return urlparse.urlsplit(url).netloc.split('.')[-2]
+
