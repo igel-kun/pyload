@@ -248,6 +248,7 @@ class SimpleHoster(Hoster):
 
 
     def process(self, pyfile):
+        self.log_debug('starting process...')
         self._prepare()
 
         #@TODO: Remove `handle_multi`, use MultiHoster instead
@@ -268,12 +269,12 @@ class SimpleHoster(Hoster):
 
             if not self.link:
                 self._preload()
-                self.check_errors()
+                self.grab_info()
+                self.check_duplicates()
 
                 if self.info.get('status', 7) != 2:
-                    self.grab_info()
+                    self.check_errors()
                     self.check_status()
-                    self.check_duplicates()
 
                 if self.premium and (not self.CHECK_TRAFFIC or not self.out_of_traffic()):
                     self.log_info(_("Processing as premium download..."))
