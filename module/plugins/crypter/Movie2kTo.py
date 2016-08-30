@@ -19,9 +19,9 @@ class Movie2kTo(Crypter):
     __author_name__ = ('4Christopher, igel')
     __author_mail__ = ('4Christopher@gmx.de, ')
     BASE_URL_PATTERN = r'http://(?:www\.)?movie4k\.to/+'
-    EPISODE_URL_PATH_PATTERN = r'(?P<name>.+)-(?:online-serie|watch-tvshow)-(?P<id>\d+)'
-    FILM_URL_PATH_PATTERN = r'(?P<name>.+)-(?:online-film|watch-movie)-(?P<id>\d+)'
-    TVSHOW_URL_PATH_PATTERN = r'tvshows-(?P<mode>[^-]*)-(?P<season>\d*)-?(?P<name>.+)'
+    EPISODE_URL_PATTERN = r'(?P<name>.+)-(?:online-serie|watch-tvshow)-(?P<id>\d+)'
+    FILM_URL_PATTERN = r'(?P<name>.+)-(?:online-film|watch-movie)-(?P<id>\d+)'
+    TVSHOW_URL_PATTERN = r'tvshows-(?P<mode>[^-]*)-(?P<season>\d*)-?(?P<name>.+)'
     SEASON_PATTERN = r'<TD id="tdmovies" width="[^"]*"><a href="([^"]*)">.*?Season:\s*(\d*)'
     SEASON_DROPDOWN_PATTERN = r'<SELECT name="season".*?value="([^"]*)" selected'
     # detect links in the javascript or html code in groups: ID, hoster, quality code
@@ -33,22 +33,22 @@ class Movie2kTo(Crypter):
     EPISODE_PATTERN = r'<TD id="tdmovies" width="[^"]*"><a href="([^"]*)">.*?Episode:\s*(\d*)'
     BASE_URL = 'http://www.movie4k.to'
 
-    def getInfo(self, url_path):
+    def get_dl_type(self, url):
         self.format = 'other'
         # 3 possibilities: 1. a movie, 2. a TV-show episode, 3. something else (entire show or season)
-        pattern_re = re.search(self.FILM_URL_PATH_PATTERN, url_path)
+        pattern_re = re.search(self.FILM_URL_PATTERN, url)
         if pattern_re is not None:
             self.format = 'movie'
         else:
-            pattern_re = re.search(self.EPISODE_URL_PATH_PATTERN, url_path)
+            pattern_re = re.search(self.EPISODE_URL_PATTERN, url)
             if pattern_re is not None:
                 self.format = 'episode'
         # if we have detected a movie or a TV show episode, then we have a name and an id
         if self.format != 'other':
             self.name = pattern_re.group('name')
             self.id = pattern_re.group('id')
-            self.log_debug('URL Path: %s (ID: %s, Name: %s, Format: %s)'
-                      % (url_path, self.id, self.name, self.format))
+            self.log_debug('URL: %s (ID: %s, Name: %s, Format: %s)'
+                      % (url, self.id, self.name, self.format))
 
     def handle_show(self, url_path, name):
         # load the webpage
@@ -115,7 +115,7 @@ class Movie2kTo(Crypter):
     # handle entire TV show or entire season
     def handle_other(self, url_path):
         # 2 possibilities: an entire TV show or a TV-show season
-        pattern_re = re.search(self.TVSHOW_URL_PATH_PATTERN, url_path)
+        pattern_re = re.search(self.TVSHOW_URL_PATTERN, url_path)
         if pattern_re is not None:
             if pattern_re.group('mode') == 'season':
                 # an entire TV show: recursive call for all its seasons
@@ -137,24 +137,24 @@ class Movie2kTo(Crypter):
         self.package = pyfile.package()
         self.qStatReset()
         url_path = re.match(self.__pattern__, pyfile.url).group(1)
-        self.getInfo(url_path)
+        self.get_dl_type(url_path)
 
         if (self.format == 'movie') or (self.format == 'episode'):
             if(self.config.get('whole_season') and (self.format == 'episode')):
               self.handle_season_from_episode(url_path)
             else:
-              links = self.getLinks(url_path)
+              links = self.get_links(url_path)
               name = '%s%s' % (self.package.name, self.qStat())
               self.packages.append((name, links, self.package.folder))            
         else:
             self.handle_other(url_path)
 
     def get_episode_links(self, url_path):
-        self.getInfo(url_path)
-        return self.getLinks(url_path)
+        self.get_dl_type(url_path)
+        return self.get_links(url_path)
 
     ## This function returns the links for one episode/movie as list
-    def getLinks(self, url_path):
+    def get_links(self, url_path):
         # read config
         hoster_blacklist = re.findall(r'\b(\w+?)\b', self.config.get('hoster_blacklist'))
         firstN = self.config.get('firstN')
