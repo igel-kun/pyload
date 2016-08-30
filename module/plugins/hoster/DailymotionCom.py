@@ -111,6 +111,7 @@ class DailymotionCom(Hoster):
 
     def check_info(self, pyfile):
         pyfile.name, pyfile.size, pyfile.status, pyfile.url = get_info([pyfile.url])[0]
+        self.check_duplicates()
 
         if pyfile.status == 1:
             self.offline()

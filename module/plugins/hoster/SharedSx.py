@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
-from module.plugins.hoster.XFileSharing import XFileSharing
+
+from module.plugins.hoster.XFileSharingHoster import XFileSharingHoster
 
 
-class SharedSx(XFileSharing):
+class SharedSx(XFileSharingHoster):
     __name__ = "SharedSx"
     __type__ = "hoster"
-    __pattern__ = r"https?://(?:\w*\.)*(?P<DOMAIN>shared\.sx)/"
     __version__ = "0.01"
+    __pattern__ = r"https?://(?:\w*\.)*(?P<DOMAIN>shared\.sx)/"
     __description__ = """shared.sx plugin"""
     __author_name__ = ("igel")
     __author_mail__ = ("")

@@ -27,6 +27,12 @@ class ThevideoMe(SimpleHoster):
 
     URL_REPLACEMENTS = [(__pattern__ + ".*", BASE_URL + r'download/\g<id>')]
 
+    def setup(self):
+        self.multiDL = True
+        self.chunkLimit = 1
+        self.resumeDownload = True
+
+
     def handle_free(self, pyfile):
         file_id = re.search(self.__pattern__, pyfile.url).group('id')
         self.data = self.load(self.BASE_URL + 'cgi-bin/index_dl.cgi?op=get_vid_versions&file_code=%s' % file_id)
