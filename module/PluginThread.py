@@ -201,7 +201,7 @@ class DownloadThread(PluginThread):
                 try:
                     self.m.log.info(_("Download aborted: %s") % pyfile.name)
                 except:
-                    pass
+                    print "Download aborted (pyfile = %s)" % str(pyfile)
 
                 pyfile.setStatus("aborted")
 
@@ -209,6 +209,11 @@ class DownloadThread(PluginThread):
                 continue
 
             except Reconnect:
+                try:
+                    self.m.log.info(_("Download will restart later: %s") % pyfile.name)
+                except:
+                    print "Download will restart later (pyfile = %s)" % str(pyfile)
+
                 self.queue.put(pyfile)
                 #pyfile.req.clearCookies()
 
