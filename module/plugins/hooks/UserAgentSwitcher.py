@@ -26,13 +26,16 @@ class UserAgentSwitcher(Addon):
         connecttimeout = self.config.get('connecttimeout')
         maxredirs      = self.config.get('maxredirs')
         useragent      = self.config.get('useragent')
+        
+        try:
+            if connecttimeout:
+                pyfile.plugin.req.http.c.setopt(pycurl.CONNECTTIMEOUT, connecttimeout)
 
-        if connecttimeout:
-            pyfile.plugin.req.http.c.setopt(pycurl.CONNECTTIMEOUT, connecttimeout)
+            if maxredirs:
+                pyfile.plugin.req.http.c.setopt(pycurl.MAXREDIRS, maxredirs)
 
-        if maxredirs:
-            pyfile.plugin.req.http.c.setopt(pycurl.MAXREDIRS, maxredirs)
-
-        if useragent:
-            self.log_debug("Use custom user-agent string `%s`" % useragent)
-            pyfile.plugin.req.http.c.setopt(pycurl.USERAGENT, encode(useragent))
+            if useragent:
+                self.log_debug("Use custom user-agent string `%s`" % useragent)
+                pyfile.plugin.req.http.c.setopt(pycurl.USERAGENT, encode(useragent))
+        except:
+            self.log_debug(_("failed to set user agent, connect timeout, or max redirects."))
