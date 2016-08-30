@@ -147,7 +147,7 @@ class SimpleCrypter(Crypter):
         self.__class__.__name__ = class_name
 
 
-    def handle_direct(self):
+    def handle_direct(self, pyfile):
         self._preload()
 
         link = self.last_header.get('url')
@@ -190,12 +190,12 @@ class SimpleCrypter(Crypter):
         self.pyfile.url = replace_patterns(self.pyfile.url, self.URL_REPLACEMENTS)
 
 
-    def decrypt(self):
+    def decrypt(self, pyfile):
         self._prepare()
 
         if self.direct_dl:
             self.log_info(_("Looking for direct link..."))
-            self.handle_direct()
+            self.handle_direct(pyfile)
 
             if self.links or self.packages:
                 self.log_info(_("Direct link detected"))
@@ -210,10 +210,10 @@ class SimpleCrypter(Crypter):
             self.links.extend(links)
 
             if self.PAGES_PATTERN:
-                self.handle_pages()
+                self.handle_pages(pyfile)
 
 
-    def handle_free(self):
+    def handle_free(self, pyfile):
         if not self.LINK_FREE_PATTERN:
             self.log_warning(_("Free decrypting not implemented"))
 
@@ -224,7 +224,7 @@ class SimpleCrypter(Crypter):
             self.links.extend(links)
 
 
-    def handle_premium(self):
+    def handle_premium(self, pyfile):
         if not self.LINK_PREMIUM_PATTERN:
             self.log_warning(_("Premium decrypting not implemented"))
             self.restart(premium=False)
