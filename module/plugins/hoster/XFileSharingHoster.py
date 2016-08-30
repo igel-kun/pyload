@@ -2,6 +2,7 @@
 
 import re
 
+from module.plugins.internal.misc import get_domain
 from module.plugins.internal.XFSHoster import XFSHoster
 
 
@@ -34,7 +35,14 @@ class XFileSharingHoster(XFSHoster):
     def init(self):
         self.__pattern__ = self.pyload.pluginManager.hosterPlugins[self.classname]['pattern']
 
-        self.PLUGIN_DOMAIN = re.match(self.__pattern__, self.pyfile.url).group("DOMAIN").lower()
+        if not self.PLUGIN_DOMAIN:
+            m = re.match(self.__pattern__, self.pyfile.url)
+            try:
+                self.PLUGIN_DOMAIN = m.group("DOMAIN").lower()
+            except:
+                self.PLUGIN_DOMAIN = get_domain(m.group(0))
+
+        
         self.PLUGIN_NAME   = "".join(part.capitalize() for part in re.split(r'\.|\d+|-', self.PLUGIN_DOMAIN) if part != '.')
 
 
