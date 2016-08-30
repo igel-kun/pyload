@@ -67,9 +67,10 @@ class HTTPDownload():
         self.m = pycurl.CurlMulti()
 
         #needed for speed calculation
+        self.average_span = 8
         self.lastArrived = []
         self.speeds = []
-        self.lastSpeeds = [0, 0]
+        self.lastSpeeds = [0 for x in range(self.average_span)]
 
         self.progressNotify = progressNotify
 
@@ -275,8 +276,8 @@ class HTTPDownload():
             if lastTimeCheck + 1 < t:
                 diff = [c.arrived - (self.lastArrived[i] if len(self.lastArrived) > i else 0) for i, c in
                         enumerate(self.chunks)]
-
-                self.lastSpeeds[1] = self.lastSpeeds[0]
+                for i in range(self.average_span,1,-1):
+                    self.lastSpeeds[i-1] = self.lastSpeeds[i-2]
                 self.lastSpeeds[0] = self.speeds
                 self.speeds = [float(a) / (t - lastTimeCheck) for a in diff]
                 self.lastArrived = [c.arrived for c in self.chunks]
