@@ -26,8 +26,6 @@ class Keep2ShareCc(SimpleHoster):
                        ("Walter Purcaro", "vuolter@gmail.com")]
 
 
-    URL_REPLACEMENTS = [(__pattern__ + ".*", "http://keep2s.cc/file/\g<ID>")]
-
     NAME_PATTERN = r'File: <span>(?P<N>.+?)</span>'
     SIZE_PATTERN = r'Size: (?P<S>.+?)</div>'
 
@@ -38,13 +36,13 @@ class Keep2ShareCc(SimpleHoster):
     LINK_PREMIUM_PATTERN = r'window\.location\.href = \'(.+?)\';'
     UNIQUE_ID_PATTERN    = r"data: {uniqueId: '(?P<uID>\w+)', free: 1}"
 
-    PREMIUM_ONLY_PATTERN = r'only for premium members'
+    PREMIUM_ONLY_PATTERN = r'only for premium (?:members|users)'
 
     CAPTCHA_PATTERN = r'src="(/file/captcha\.html.+?)"'
 
     WAIT_PATTERN         = r'Please wait ([\d:]+) to download this file'
     TEMP_ERROR_PATTERN   = r'>\s*(Download count files exceed|Traffic limit exceed|Free account does not allow to download more than one file at the same time)'
-    ERROR_PATTERN        = r'>\s*(Free user can\'t download large files|You no can access to this file|This download available only for premium users|This is private file)'
+    ERROR_PATTERN        = r'>\s*(Free user can\'t download large files|You no can access to this file|file is no longer available|This is private file)'
 
 
     # a problem with keep2share is that it sometimes forwards requests to other URLs (like k2s)
@@ -53,16 +51,16 @@ class Keep2ShareCc(SimpleHoster):
     # then, the download request goes to k2s.cc but the captcha request goes to keep2s.cc
     # this causes correctly solved captchas to be considered wrong :(
     # to combat this, the following function follows all redirects and updates self.pyfile.url
-    def update_url(self):
+    def setup(self):
         header = self.load(self.pyfile.url, just_header = True)
         while 'location' in header:
             self.log_debug('got redirected to %s' % str(header['location']))
             self.pyfile.url = header['location']
             header = self.load(self.pyfile.url, just_header = True)
+        super(Keep2ShareCc, self).setup()
 
 
     def handle_free(self, pyfile):
-        self.update_url()
         self.check_errors()
 
         self.fid  = re.search(r'<input type="hidden" name="slow_id" value="(.+?)">', self.data).group(1)
