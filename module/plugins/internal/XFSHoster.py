@@ -39,12 +39,12 @@ class XFSHoster(SimpleHoster):
     NAME_PATTERN          = r'(Filename[ ]*:[ ]*</b>(</td><td nowrap>)?|name="fname"[ ]+value="|<[\w^_]+ class="(file)?name">)\s*(?P<N>.+?)(\s*<|")'
     SIZE_PATTERN          = r'(Size[ ]*:[ ]*</b>(</td><td>)?|File:.*>|</font>\s*\(|<[\w^_]+ class="size">)\s*(?P<S>[\d.,]+)\s*(?P<U>[\w^_]+)'
 
-    OFFLINE_PATTERN       = r'>\s*\w+ (Not Found|file (was|has been) removed|no longer available)'
-    TEMP_OFFLINE_PATTERN  = r'>\s*\w+ server (is in )?(maintenance|maintainance)'
+    OFFLINE_PATTERN       = r'(Not Found|file (was|has been) removed|no longer available|copyright (?:viola|infr|claim)|did\s*n.t comply(?:\s*\w+)* Terms of Use)'
+    TEMP_OFFLINE_PATTERN  = r'server (?:is in )?maint[eai]*nance'
 
-    WAIT_PATTERN          = r'<span id="countdown_str".*>(\d+)</span>|id="countdown" value=".*?(\d+).*?"'
-    PREMIUM_ONLY_PATTERN  = r'>This file is available for Premium Users only'
-    HAPPY_HOUR_PATTERN    = r'>[Hh]appy hour'
+    WAIT_PATTERN          = r'<span id="countdown".*>(\d+)</span>|id="countdown" value=".*?(\d+).*?"'
+    PREMIUM_ONLY_PATTERN  = r'available for Premium Users only'
+    HAPPY_HOUR_PATTERN    = r'[Hh]appy hour'
     ERROR_PATTERN         = r'(?:class=["\']err["\'].*?>|<[Cc]enter><b>|>Error</td>|>\(ERROR:)(?:\s*<.+?>\s*)*(.+?)(?:["\']|<|\))'
 
     LINK_LEECH_PATTERN    = r'<h2>Download Link</h2>\s*<textarea.*?>(.+?)'
@@ -80,7 +80,7 @@ class XFSHoster(SimpleHoster):
             self._set_xfs_cookie()
 
         if not self.LINK_PATTERN:
-            pattern = r'(?:file: "(.+?)"|(https?://(?:www\.)?([^/]*?%s|\d+\.\d+\.\d+\.\d+)(\:\d+)?(/d/|(/files)?/\d+/\w+/).+?)["\'<])'
+            pattern = r"(?:file: \"(.+?)\"|(https?://(?:www\.)?(?:[^/]*?%s|\d+\.\d+\.\d+\.\d+)(?:\:\d+)?(?:/d/|(?:/files)?/\d+/\w+/).+?)[\"'<])"
             self.LINK_PATTERN = pattern % self.PLUGIN_DOMAIN.replace('.', '\.')
 
         super(XFSHoster, self)._prepare()
@@ -99,26 +99,36 @@ class XFSHoster(SimpleHoster):
 
         for i in xrange(1, 6):
             self.log_debug("Getting download link #%d..." % i)
+            self.log_debug("using pattern %s" % str(self.LINK_PATTERN))
 
             self.check_errors()
 
             m = re.search(self.LINK_PATTERN, self.data, re.S)
             if m is not None:
-                self.link = m.group(1)
+                for link_match in m.groups():
+                    if link_match:
+                        self.link = link_match
+                self.log_debug('found link: %s' % self.link)
                 break
 
+            m = re.search(self.LINK_PATTERN, self.data, re.MULTILINE | re.DOTALL)
+            if m is not None:
+                for link_match in m.groups():
+                    if link_match:
+                        self.link = link_match
+                self.log_debug('found link with MULTILINE: %s' % self.link)
+                break
+
+            self.log_debug("Couldn't find the link, advancing to next layer...")
             self.data = self.load(pyfile.url,
                                   post=self._post_parameters(),
                                   redirect=False)
 
             if not "op=" in self.last_header.get('location', "op="):
                 self.link = self.last_header.get('location')
+                self.log_debug('found redirect to %s' % self.link)
                 break
 
-            m = re.search(self.LINK_PATTERN, self.data, re.MULTILINE | re.DOTALL)
-            if m is not None:
-                self.link = m.group(1)
-                break
         else:
             if 'op' in data:
                 self.error(_("Missing OP data after: ") + data['op'])
