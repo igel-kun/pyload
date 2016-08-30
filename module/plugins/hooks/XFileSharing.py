@@ -34,13 +34,13 @@ class XFileSharing(Addon):
                         "eyesfile.ca", "file4safe.com", "fileband.com", "filedwon.com",
                         "fileparadox.in", "filevice.com", "hostingbulk.com", "junkyvideo.com",
                         "ravishare.com", "salefiles.com", "sendmyway.com", "sharebeast.com",
-                        "sharesix.com", "thefile.me", "verzend.be", "worldbytez.com",
+                        "sharesix.com", "verzend.be", "worldbytez.com",
                         "xvidstage.com",
                         # NOT TESTED:
                         "101shared.com", "4upfiles.com", "filemaze.ws", "filenuke.com",
                         "linkzhost.com", "mightyupload.com", "rockdizfile.com", "sharerepo.com",
                         "shareswift.com", "uploadbaz.com", "uploadc.com", "vidbull.com",
-                        "zalaa.com", "zomgupload.com",
+                        "zalaa.com", "zomgupload.com", "allmyvideos.net",
                         # NOT WORKING:
                         "amonshare.com", "banicrazy.info", "boosterking.com", "host4desi.com",
                         "laoupload.com", "rd-fs.com"]
