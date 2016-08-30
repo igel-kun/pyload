@@ -20,4 +20,5 @@ class XFileSharingLite(XFileSharing):
     def setup(self):
         self.multiDL = True
         self.chunkLimit = 1
+        self.resume_download = True
 
