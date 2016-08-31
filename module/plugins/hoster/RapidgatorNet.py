@@ -43,7 +43,7 @@ class RapidgatorNet(SimpleHoster):
 
     JSVARS_PATTERN = r'\s+var\s*(startTimerUrl|getDownloadUrl|captchaUrl|fid|secs)\s*=\s*\'?(.*?)\'?;'
 
-    PREMIUM_ONLY_PATTERN         = r'You can download files up to|This file can be downloaded by premium only<'
+    PREMIUM_ONLY_PATTERN         = r'You can download files up to|This file can be downloaded by premium only'
     DOWNLOAD_LIMIT_ERROR_PATTERN = r'(?:You have reached your (?P<time>daily|hourly) downloads limit|more than 1 file at a time in free mode)'
     WAIT_PATTERN                 = r'(?:Delay between downloads must be not less than|Try again in).+'
 
@@ -79,7 +79,7 @@ class RapidgatorNet(SimpleHoster):
             json_data = json.loads(html)
         except BadHeader, e:
             html = e.content
-            self.log_debug("API:%s" % cmd, html, "SID: %s" % self.sid)
+            self.log_debug("BadHeader from API:%s" % cmd, html, "SID: %s" % self.sid)
             json_data = json.loads(html)
             if 'response_details' in json_data:
                 self.data = json_data['response_details']
