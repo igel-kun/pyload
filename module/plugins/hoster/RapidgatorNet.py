@@ -126,7 +126,7 @@ class RapidgatorNet(SimpleHoster):
         #TODO handle large wait times here
         waittime = self.api_data['delay']
         self.log_debug('waiting %s sec' % waittime)
-        self.wait(int(waittime))
+        self.wait(int(waittime), reconnect=False)
 
     def check_errors(self):
         super(RapidgatorNet, self).check_errors()
