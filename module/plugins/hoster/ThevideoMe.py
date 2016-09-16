@@ -17,15 +17,16 @@ class ThevideoMe(SimpleHoster):
     __license__     = "GPLv3"
     __authors__ = [("igel", "")]
 
-    BASE_URL = 'http://thevideo.me/'
+    HOSTERDOMAIN = 'thevideo.me'
     FORM_PATTERN = r'<form id="veriform".*?</form>'
     VERSION_PATTERN = r"onclick=\"download_video\('\w*','(?P<short>.)','(?P<long>[^']*)'\)\">(?P<qual>[^<]*)</a>.*?(?P<resx>\d+)[0-9x]*,\s*(?P<size>[^<]*)<"
     LINK_PATTERN = r'<a href="([^"]*)" name="dl" id="btn_download".*Download'
     NAME_PATTERN = r'<h1[^>]*>Download\w*\s(?P<N>[^<]*)<'
     OFFLINE_PATTERN = r'not\s*\w*\sfound'
     DL_ORIG_PATTERN = r'name="op".*value="download_orig"'
+    CGI_INTERFACE = '/cgi-bin/index_dl.cgi'
 
-    URL_REPLACEMENTS = [(__pattern__ + ".*", BASE_URL + r'download/\g<id>')]
+    URL_REPLACEMENTS = [(__pattern__ + ".*", 'http://' + HOSTERDOMAIN + r'/download/\g<id>')]
 
     def setup(self):
         self.multiDL = True
@@ -35,14 +36,14 @@ class ThevideoMe(SimpleHoster):
 
     def handle_free(self, pyfile):
         file_id = re.search(self.__pattern__, pyfile.url).group('id')
-        self.data = self.load(self.BASE_URL + 'cgi-bin/index_dl.cgi?op=get_vid_versions&file_code=%s' % file_id)
+        self.data = self.load('http://' + self.HOSTERDOMAIN + self.CGI_INTERFACE + '?op=get_vid_versions&file_code=%s' % file_id)
 
         # get the best quality version
         available_versions = re.findall(self.VERSION_PATTERN, self.data)
         urls = dict()
         sizes = dict()
         for short_url,long_url,qual,resx,size in available_versions:
-            urls[resx] = self.BASE_URL + 'download/' + file_id + '/' + short_url + '/' + long_url
+            urls[resx] = 'http://' + self.HOSTERDOMAIN + 'download/' + file_id + '/' + short_url + '/' + long_url
             sizes[resx] = size
         
         self.log_debug('versions: %s' % str(urls))

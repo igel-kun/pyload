@@ -12,7 +12,6 @@ class SharedSx(XFileSharingHoster):
     __author_name__ = ("igel")
     __author_mail__ = ("")
 
-    HOSTERDOMAIN = 'shared.sx'
     # FORM_PATTERN = r'<form\s*method="post">(.*?>Continue to file<.*?)</form>'
     FORM_PATTERN = 'method'
     INFO_PATTERN = '<h1 data-hash.*?>\w* (?P<N>[^<]+)<strong>\((?P<S>[\d.]+) (?P<U>\w+)\)</strong>'

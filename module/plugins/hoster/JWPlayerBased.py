@@ -67,7 +67,7 @@ class JWPlayerBased(XFSHoster):
         if 'eval' in self.link:
             self.log_debug(_("evaluating script to get call to jwplayer"))
             js_code = re.sub('eval', '', self.link)
-            data = eval_js_script(js_code, True)
+            data = eval_js_script(js_code)
             # now, data should be a call to jwplayer in plaintext
 
             # step 2: extract file URL
