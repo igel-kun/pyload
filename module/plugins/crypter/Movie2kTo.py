@@ -9,10 +9,11 @@ from tempfile import NamedTemporaryFile
 class Movie2kTo(Crypter):
     __name__ = 'Movie2kTo'
     __type__ = 'container'
-    __pattern__ = r'http://(?:www\.)?movie4k(?:proxy)?\.(?:to|com)/+(.*)'
-    __version__ = '0.6'
+    __pattern__ = r'https?://(?:www\.)?movie4k(?:proxy)?\.(?:to|com|org|pe|me)/+(.*)'
+    __version__ = '0.7'
     __config__ = [('hoster_blacklist', 'str', 'List of non-accepted hosters (space separated)', ''),
                   ('dir_quality', 'bool', 'Show the quality of the footage in the folder name', 'True'),
+                  ('min_quality', 'int', 'Don\'t download media below this quality', '5'),
                   ('whole_season', 'bool', 'Always get the whole season instead of just one episode', 'True'),
                   ('firstN', 'int', 'Get the first N links for each file and hoster', '3')]
     __description__ = """Movie4k.to Container Plugin"""
@@ -31,6 +32,7 @@ class Movie2kTo(Crypter):
     EPISODE_DROPDOWN_PREGREP_PATTERN = '<FORM name="episodeform%s">.*?</FORM>'
     EPISODE_DROPDOWN_PATTERN = r'<OPTION value="([^"]*)".*?>Episode\s*(\d*) '
     EPISODE_PATTERN = r'<TD id="tdmovies" width="[^"]*"><a href="([^"]*)">.*?Episode:\s*(\d*)'
+    QUALITY_PATTERN = r'.+?Quality:.+?smileys/(\d)\.gif'
     BASE_URL = 'http://www.movie4k.to'
 
     def get_dl_type(self, url):
@@ -52,9 +54,9 @@ class Movie2kTo(Crypter):
 
     def handle_show(self, url_path, name):
         # load the webpage
-        self.html = self.load("%s/%s" % (self.BASE_URL, url_path))
+        self.data = self.load("%s/%s" % (self.BASE_URL, url_path))
         # get all seasons for this show
-        seasons = re.findall(self.SEASON_PATTERN, self.html)
+        seasons = re.findall(self.SEASON_PATTERN, self.data)
         # handle each season individually
         for sURL, sNR in seasons:
             handle_season(sURL, name, sNR)
@@ -66,12 +68,12 @@ class Movie2kTo(Crypter):
         folder = '%s/Season %s' % (name, self.tvshow_number(sNR))
 
         # load the webpage
-        self.html = self.load("%s/%s" % (self.BASE_URL, url_path))
+        self.data = self.load("%s/%s" % (self.BASE_URL, url_path))
         # add the links of the episodes to the collected links for this season
         regex = re.compile(self.EPISODE_PATTERN)
 
         season_links = []
-        for match in regex.finditer(self.html):
+        for match in regex.finditer(self.data):
             season_links += self.get_episode_links(match.group(1))            
         # add Quality suffix if configured
         augmented_name = "%s%s" % (name, self.qStat())
@@ -80,10 +82,10 @@ class Movie2kTo(Crypter):
 
     def handle_season_from_episode(self, url_path):
         # load the webpage
-        self.html = self.load("%s/%s" % (self.BASE_URL, url_path))
+        self.data = self.load("%s/%s" % (self.BASE_URL, url_path))
 
         # get the season number
-        m = re.search(self.SEASON_DROPDOWN_PATTERN, self.html, re.MULTILINE | re.DOTALL)
+        m = re.search(self.SEASON_DROPDOWN_PATTERN, self.data, re.MULTILINE | re.DOTALL)
         if not m:
           self.parseError("could not parse %s/%s, please check spelling" % (self.BASE_URL, url_path))
 
@@ -95,7 +97,7 @@ class Movie2kTo(Crypter):
         # find the selected episode list
         pregrep_pattern = self.EPISODE_DROPDOWN_PREGREP_PATTERN % sNR
         self.log_debug('finding dropdown pregrep pattern: %s' % pregrep_pattern)
-        selected_episodes = re.search(pregrep_pattern, self.html, re.MULTILINE | re.DOTALL)
+        selected_episodes = re.search(pregrep_pattern, self.data, re.MULTILINE | re.DOTALL)
 
         self.log_debug('finding %s in %s' % (self.EPISODE_DROPDOWN_PATTERN, selected_episodes.group(0)))
 
@@ -157,20 +159,21 @@ class Movie2kTo(Crypter):
     def get_links(self, url_path):
         # read config
         hoster_blacklist = re.findall(r'\b(\w+?)\b', self.config.get('hoster_blacklist'))
-        firstN = self.config.get('firstN')
+        min_quality = int(self.config.get('min_quality', 5))
+        firstN = int(self.config.get('firstN', 3))
         links = []
         # prepare patterns:
         # The quality is one digit. 0 is the worst and 5 is the best. It's not always there.
-        re_quality = re.compile(r'.+?Quality:.+?smileys/(\d)\.gif')
+        re_quality = re.compile(self.QUALITY_PATTERN)
         # the hoster IDs can be parsed from the javascript "links"-array
         re_hoster_id_js = re.compile(self.DETECT_JS_LINK_PATTERN)
         # I assume that the ID is 7 digits
         re_hoster_id_html = re.compile(self.DETECT_HTML_LINK_PATTERN)
         
         # load the page        
-        self.html = self.load("%s/%s" % (self.BASE_URL, url_path))
+        self.data = self.load("%s/%s" % (self.BASE_URL, url_path))
         # parse for IDs
-        matches = re_hoster_id_js.findall(self.html) + re_hoster_id_html.findall(self.html)
+        matches = re_hoster_id_js.findall(self.data) + re_hoster_id_html.findall(self.data)
 
         self.log_debug('found the following %d matches in %s/%s:' % (len(matches), self.BASE_URL, url_path))
         self.log_debug(matches)
@@ -182,28 +185,26 @@ class Movie2kTo(Crypter):
         ## h_id: hoster_id of a possible hoster
         for h_id, hoster, q_html in matches:
             if hoster not in hoster_blacklist:
-                self.log_debug('Accepted: %s, ID: %s' % (hoster, h_id))
-                match_q = re_quality.search(q_html)
-                if match_q:
-                    # if the quality indicator is not omitted, note the quality of this movie
-                    quality = int(match_q.group(1))
-                    if self.max_q == None:
-                        self.max_q = quality
-                    else:
-                        if self.max_q < quality:
-                            self.max_q = quality
-                    self.log_debug('Quality: %d' % quality)
-            
-                count[hoster] += 1
                 if count[hoster] <= firstN:
-                    if match_q: self.q.append(quality)
+                    match_q = re_quality.search(q_html)
+                    if match_q:
+                        # if the quality indicator is not omitted, compare it with the minimum configured quality
+                        quality = int(match_q.group(1))
+                        if quality < min_quality:
+                            self.log_debug('Rejected as quality %d is less than configured min quality %d' % (quality, min_quality))
+                            continue
+                        else:
+                            # also note it for statistical purposes
+                            self.q.append(quality)
+                            self.log_debug('Quality: %d' % quality)
+                
                     if h_id != self.id:
                         if self.format != 'movie':
                             self.log_debug('detected TV show episode, loading %s/tvshows-%s-%s.html' % (self.BASE_URL, h_id, self.name))
-                            self.html = self.load('%s/tvshows-%s-%s.html' % (self.BASE_URL, h_id, self.name))
+                            self.data = self.load('%s/tvshows-%s-%s.html' % (self.BASE_URL, h_id, self.name))
                         else:
                             self.log_debug('detected movie, loading %s/%s-watch-movie-%s.html' % (self.BASE_URL, self.name, h_id))
-                            self.html = self.load('%s/%s-watch-movie-%s.html' % (self.BASE_URL, self.name, h_id))
+                            self.data = self.load('%s/%s-watch-movie-%s.html' % (self.BASE_URL, self.name, h_id))
                             
                     else:
                         self.log_debug('This is already the right ID')
@@ -214,13 +215,16 @@ class Movie2kTo(Crypter):
                     for pattern in (r'<a target="_blank" href="(http://[^"]*?)"',
                                     r'<iframe src="(http://[^"]*?)" width'):
                         try:
-                            url = re.search(pattern, self.html).group(1)
+                            url = re.search(pattern, self.data).group(1)
                         except:
                             self.log_debug('Failed to find the URL (pattern %s)' % pattern)
                         else:
-                            self.log_debug('id: %s, %s: %s' % (h_id, hoster, url))
+                            self.log_debug('Accepted URL %s' % url, 'hoster  %s, ID: %s' % (hoster, h_id))
                             links.append(url)
+                            count[hoster] += 1
                             break
+                else:
+                    self.log_debug("Not accepted as there are already %d files from %s" % (firstN, hoster))
             else:
                 self.log_debug('Not accepted since %s is blacklisted' % hoster)
         # self.log_debug(links)
