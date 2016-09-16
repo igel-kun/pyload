@@ -617,10 +617,7 @@ def parse_time(value):
 
             seconds += quant * {'hr': 3600, 'hour': 3600, 'min': 60, 'sec': 1, '': 1}[u.lower()]
 
-    if seconds == 0:
-        return 3600
-    else:
-        return seconds
+    return seconds
 
 
 def timestamp():
