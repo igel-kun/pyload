@@ -29,7 +29,7 @@ class NitroflareCom(SimpleHoster):
                        ("GammaC0de",      "nitzo2001[AT]yahoo[DOT]com")]
 
     INFO_PATTERN    = r'title="(?P<N>.+?)".+>(?P<S>[\d.,]+) (?P<U>[\w^_]+)'
-    OFFLINE_PATTERN = r'>File doesn\'t exist'
+    OFFLINE_PATTERN = r"File doesn't exist|file has been removed"
 
     LINK_PREMIUM_PATTERN = LINK_FREE_PATTERN = r'(https?://[\w\-]+\.nitroflare\.com/.+?)"'
     FILE_ID_PATTERN = r'https?://(?:www\.)?nitroflare\.com/view/(?P<ID>[\w^_]+)'
