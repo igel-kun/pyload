@@ -370,6 +370,7 @@ class Base(Plugin):
                     self.req.clearCookies()
                     break
                 time.sleep(2)
+            self.wantReconnect = False
             raise Reconnect
 
         self.waiting = False
@@ -468,7 +469,7 @@ class Base(Plugin):
         if 0 < attemps <= self.retries[id]:
             self.fail(msg or _("Max retries reached"))
 
-        self.wait(wait, False)
+        self.wait(wait, reconnect=True)
 
         self.retries[id] += 1
         raise Retry(encode(msg))  #@TODO: Remove `encode` in 0.4.10
