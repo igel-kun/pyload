@@ -111,7 +111,7 @@ class SimpleHoster(Hoster):
     NAME_PATTERN         = None
     SIZE_PATTERN         = None
     HASHSUM_PATTERN      = r'[^\w](?P<H>(CRC|crc)(-?32)?|(MD|md)-?5|(SHA|sha)-?(1|224|256|384|512)).*(:|=|>)[ ]*(?P<D>(?:[a-z0-9]|[A-Z0-9]){8,})'
-    OFFLINE_PATTERN      = r'[^\w](404\s|[Ii]nvalid|[Oo]ffline|[Dd]elet|[Rr]emov|([Nn]o(t|thing)?|sn\'t) (found|(longer )?(available|exist)))'
+    OFFLINE_PATTERN      = r'[^\w](404\s|[Ii]nvalid|[Oo]ffline|[Dd]eleted|[Rr]emoved|([Nn]o(t|thing)?|sn\'t) (found|(longer )?(available|exist)))'
     TEMP_OFFLINE_PATTERN = r'[^\w](503\s|[Mm]aint(e|ai)nance|[Tt]emp([.-]|orarily)|[Mm]irror)'
 
     WAIT_PATTERN         = None
@@ -144,19 +144,23 @@ class SimpleHoster(Hoster):
 
             elif info['status'] in (3, 7):
                 try:
-                    html = get_url(url, cookies=cls.COOKIES, decode=cls.TEXT_ENCODING)
+                    html = cls.load(url, cookies=cls.COOKIES, decode=cls.TEXT_ENCODING)
 
                 except BadHeader, e:
-                    info['error'] = "%d: %s" % (e.code, e.content)
+                    html = e.content
+                    info['error'] = "bad header %d: %s" % (e.code, e.content)
 
                 except Exception:
+                    print('exception when trying to load %s, continuing without...' % url)
                     pass
 
         if html:
-            if cls.OFFLINE_PATTERN and re.search(cls.OFFLINE_PATTERN, html) is not None:
+            if cls.OFFLINE_PATTERN and re.search(cls.OFFLINE_PATTERN, html, re.IGNORECASE) is not None:
+                info['error'] = 'offline pattern matched'
                 info['status'] = 1
 
-            elif cls.TEMP_OFFLINE_PATTERN and re.search(cls.TEMP_OFFLINE_PATTERN, html) is not None:
+            elif cls.TEMP_OFFLINE_PATTERN and re.search(cls.TEMP_OFFLINE_PATTERN, html, re.IGNORECASE) is not None:
+                info['error'] = 'temp-offline pattern matched'
                 info['status'] = 6
 
             else:
@@ -270,6 +274,7 @@ class SimpleHoster(Hoster):
             if not self.link:
                 self._preload()
                 self.grab_info()
+                self.check_status()
                 self.check_duplicates()
 
                 if self.info.get('status', 7) != 2:
@@ -381,7 +386,7 @@ class SimpleHoster(Hoster):
                 elif re.search(self.OFFLINE_PATTERN, errmsg):
                     self.offline()
                 
-                elif re.search('limit|wait|slot|exceed|same time', errmsg, re.I):
+                elif re.search('limit|wait|slot|exceed|same time|hour', errmsg, re.I):
                     wait_time = parse_time(errmsg)
                     self.wait(wait_time, reconnect=wait_time > self.config.get('max_wait', 10) * 60)
                     self.restart(_("Download limit exceeded"))
