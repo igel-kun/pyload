@@ -39,7 +39,7 @@ class XFSHoster(SimpleHoster):
     NAME_PATTERN          = r'(Filename[ ]*:[ ]*</b>(</td><td nowrap>)?|name="fname"[ ]+value="|<[\w^_]+ class="(file)?name">)\s*(?P<N>.+?)(\s*<|")'
     SIZE_PATTERN          = r'(Size[ ]*:[ ]*</b>(</td><td>)?|File:.*>|</font>\s*\(|<[\w^_]+ class="size">)\s*(?P<S>[\d.,]+)\s*(?P<U>[\w^_]+)'
 
-    OFFLINE_PATTERN       = r'(Not Found|file (was|has been) removed|no longer available|copyright (?:viola|infr|claim)|did\s*n.t comply(?:\s*\w+)* Terms of Use)'
+    OFFLINE_PATTERN       = r'(Not Found|file (?:was|has been)?\s*(?:removed|deleted)|no longer available|copyright (?:viola|infr|claim)|did\s*n.t comply(?:\s*\w+)* Terms of Use|File does not exist|file could not be found)'
     TEMP_OFFLINE_PATTERN  = r'server (?:is in )?maint[eai]*nance'
 
     WAIT_PATTERN          = r'<span id="countdown".*>(\d+)</span>|id="countdown" value=".*?(\d+).*?"'
@@ -166,7 +166,7 @@ class XFSHoster(SimpleHoster):
 
         action, inputs = self.parse_html_form('F1')
         if not inputs:
-            self.retry(msg=self.info.get('error') or _("TEXTAREA F1 not found"))
+            self.fail(msg=self.info.get('error') or _("TEXTAREA F1 not found"))
 
         self.log_debug(inputs)
 
@@ -208,7 +208,7 @@ class XFSHoster(SimpleHoster):
         if not inputs:
             action, inputs = self.parse_html_form('F1')
             if not inputs:
-                self.retry(msg=self.info.get('error') or _("TEXTAREA F1 not found"))
+                self.fail(msg=self.info.get('error') or _("TEXTAREA F1 not found"))
         
         if hasattr(self, 'HIDDEN_POST_PARAMETERS'):
             self.log_debug('parsing additional parameters...')
