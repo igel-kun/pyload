@@ -6,6 +6,7 @@ import __builtin__
 import mimetypes
 import os
 import re
+import pycurl
 
 from module.network.HTTPRequest import BadHeader
 from module.plugins.internal.Base import Base
@@ -162,7 +163,10 @@ class Hoster(Base):
         extension   = os.path.splitext(parse_name(url))[-1]
 
         if contenttype:
-            mimetype = contenttype.split(';')[0].strip()
+            if type(contenttype) is list:
+                mimetype = contenttype[-1].split(';')[0].strip();
+            else:
+                mimetype = contenttype.split(';')[0].strip()
 
         elif extension:
             mimetype = mimetypes.guess_type(extension, False)[0] or \
@@ -193,6 +197,8 @@ class Hoster(Base):
                 return None
             else:
                 raise
+        except BadHeader, e:
+            return None
 
         return self.isresource_from_header(header, url)
 
