@@ -86,7 +86,7 @@ class Keep2ShareCc(SimpleHoster):
 
             m = re.search(r'<div id="download-wait-timer".*>\s*(\d+).+?</div>', self.data)
             if m:
-                self.wait(m.group(1))
+                self.wait(m.group(1), reconnect=False)
 
             # get the uniqueId from the html code
             m = re.search(self.UNIQUE_ID_PATTERN, self.data)
