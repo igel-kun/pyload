@@ -17,8 +17,9 @@ class JWPlayerBased(XFSHoster):
     __author_name__ = ("igel")
     __author_mail__ = ("")
 
+    INFO_PATTERN = None
     NAME_PATTERN = r'<[tT]itle>(?:[wW]atch )?(?P<N>.*?)</[Tt]itle>'
-
+    SIZE_PATTERN = None
     LINK_PATTERN = None
 
     # how to find the jwplayer code in the HTML
@@ -76,5 +77,7 @@ class JWPlayerBased(XFSHoster):
                 for link_match in m.groups():
                     if link_match:
                         self.link = link_match
+            else:
+                self.error("could not parse call to JWplayer")
 
 

@@ -57,15 +57,13 @@ class NosvideoCom(JWPlayerBased):
             rtmp_url, streamname = parse_smil(data)
             self.download(rtmp_url, streamname)
         except Exception, e:
-            self.fail(e.message)
+            self.error(e.message)
 
 
 
     def download(self, rtmp_url, streamname):
-        self.check_status()
-
-#        if self.pyload.debug:
-        self.log_debug("DOWNLOAD RTMP " + rtmp_url + " STREAM " + streamname,
+        if self.pyload.debug:
+            self.log_debug("DOWNLOAD RTMP " + rtmp_url + " STREAM " + streamname,
                            *["%s=%s" % (key, value) for key, value in locals().items()
                              if key not in ("self", "rtmp_url", "streamname", "_[1]")])
 
@@ -73,28 +71,19 @@ class NosvideoCom(JWPlayerBased):
         dl_basename = parse_name(self.pyfile.name)
         self.pyfile.name = dl_basename
 
-        self.check_duplicates()
-
-        self.pyfile.setStatus("downloading")
-
         dl_folder   = self.pyload.config.get('general', 'download_folder')
         dl_dirname  = safejoin(dl_folder, self.pyfile.package().folder)
         dl_filename = safejoin(dl_dirname, dl_basename)
-
         dl_dir  = encode(dl_dirname)
         dl_file = encode(dl_filename)
 
         if not exists(dl_dir):
-            try:
-                os.makedirs(dl_dir)
-
-            except Exception, e:
-                self.fail(e.message)
+            os.makedirs(dl_dir)
 
         self.set_permissions(dl_dir)
 
+        self.pyfile.setStatus("downloading")
         self.pyload.hookManager.dispatchEvent("download_start", self.pyfile, dl_url, dl_filename)
-        self.check_status()
 
         dl = RTMPDownload(rtmp_url, playpath=streamname, filename=dl_filename)
         dl.download()

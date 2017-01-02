@@ -617,7 +617,10 @@ def parse_time(value):
 
             seconds += quant * {'hr': 3600, 'hour': 3600, 'min': 60, 'sec': 1, '': 1}[u.lower()]
 
-    return seconds
+    if seconds == 0:
+        return 3600
+    else:
+        return seconds
 
 
 def timestamp():
@@ -765,11 +768,14 @@ def parse_html_tag_attr_value(attr_name, tag):
     return m.group(2) if m else None
 
 
-def parse_html_form(attr_str, html, input_names={}):
+def parse_html_form(attr_str, html, input_names={}, url=""):
     for form in re.finditer(r'(?P<TAG><form[^>]*%s.*?>)(?P<CONTENT>.*?)</?(form|body|html).*?>' % attr_str,
                             html, re.I | re.S):
         inputs = {}
         action = parse_html_tag_attr_value("action", form.group('TAG'))
+        # if the url parameter was given, join it with the action value, in order to deal with relative actions
+        if url:
+            action = urlparse.urljoin(url, action)
 
         for inputtag in re.finditer(r'(<(input|textarea).*?>)([^<]*(?=</\2)|)',
                                     re.sub(re.compile(r'<!--.+?-->', re.I | re.S), "", form.group('CONTENT')),

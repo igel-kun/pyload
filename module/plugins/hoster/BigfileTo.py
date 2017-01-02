@@ -37,6 +37,7 @@ class BigfileTo(SimpleHoster):
     WAIT_PATTERN = r'>Please wait[^<]+'
 
     RECAPTCHA_KEY = "6LfZ0RETAAAAAOjhYT7V9ukeCT3wWccw98uc50vu"
+    #PATTERN = "var reCAPTCHA_publickey='(.*?)'"
 
 
     def handle_free(self, pyfile):
@@ -47,6 +48,7 @@ class BigfileTo(SimpleHoster):
 
         #: Make the ReCaptcha appear and show it the pyload interface
         json_data = json.loads(self.load(pyfile.url, post={'checkDownload': "check"}))
+        self.log_debug('check response: ' + str(json_data))
         if json_data['success'] == "showCaptcha":
             self.captcha = ReCaptcha(pyfile)
 

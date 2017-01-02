@@ -16,13 +16,24 @@ from module.plugins.Plugin import Abort, Fail
 from module.plugins.internal.misc import encode
 
 
-bad_headers = range(400, 404) + range(405, 499) + range(500, 599)
+bad_headers = range(400, 404) + range(405, 600)
 
+unofficial_errors = {440: "Login Timeout - The client's session has expired and must log in again.",
+                     449: "Retry With - The server cannot honour the request because the user has not provided the required information",
+                     451: "Redirect - Unsupported Redirect Header",
+                     520: "Unknown Error",
+                     521: "Web Server Is Down - The origin server has refused the connection from CloudFlare",
+                     522: "Connection Timed Out - CloudFlare could not negotiate a TCP handshake with the origin server",
+                     523: "Origin Is Unreachable - CloudFlare could not reach the origin server",
+                     524: "A Timeout Occurred - CloudFlare did not receive a timely HTTP response",
+                     525: "SSL Handshake Failed - CloudFlare could not negotiate a SSL/TLS handshake with the origin server",
+                     526: "Invalid SSL Certificate - CloudFlare could not validate the SSL/TLS certificate that the origin server presented"}
 
 class BadHeader(Exception):
 
     def __init__(self, code, content=""):
-        Exception.__init__(self, "Bad server response: %s %s" % (code, httplib.responses[int(code)]))
+        int_code = int(code)
+        Exception.__init__(self, "Bad server response: %s %s" % (code, httplib.responses[int_code] if int_code in httplib.responses else unofficial_errors.get(int_code, "unknown error")))
         self.code = code
         self.content = content
 
@@ -68,7 +79,7 @@ class HTTPRequest(object):
         if hasattr(pycurl, "USE_SSL"):
             self.c.setopt(pycurl.USE_SSL, pycurl.CURLUSESSL_TRY)
 
-        # self.c.setopt(pycurl.VERBOSE, 1)
+        #self.c.setopt(pycurl.VERBOSE, 1)
 
         self.c.setopt(pycurl.USERAGENT,
                       "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:37.0) Gecko/20100101 Firefox/37.0")

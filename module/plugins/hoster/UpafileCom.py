@@ -16,9 +16,6 @@ class UpafileCom(SimpleHoster):
     FILE_NAME_PATTERN = r'Filename:</b></td><td nowrap>(?P<N>.+)</td>'
     FILE_SIZE_PATTERN = r'Size:<b></td><td>(?P<S>[^<]+) <small>'
     FILE_OFFLINE_PATTERN = r'File Not Found'
-
-#    RECAPTCHA_KEY = '6Leh58kSAAAAAMi5MOyVQjl-pfwPf-GhmdYiOfJ7'
-    RECAPTCHA_KEY = '6Leh58kSAAAAAMi5MOyVQjl-pfwPf-GhmdYiOfJ7 '
     DIRECT_LINK_PATTERN = r'<a href="([^"]+)"><img src="[^"]*down.jpg"'
 
     def setup(self):
@@ -61,14 +58,14 @@ class UpafileCom(SimpleHoster):
         self.log_debug(" > Rand " + rand_val)
         self.log_debug(" > Referer " + re_val)
 
-        # Captcha handling
-        recaptcha = ReCaptcha(self)
+        # captcha. handling
+        self.captcha = ReCaptcha(self.pyfile)
         for i in xrange(5):
-            challenge, response = recaptcha.challenge(self.RECAPTCHA_KEY)
+            challenge, response = self.captcha.challenge()
             # Create post data
             post_data = {'recaptcha_challenge_field': challenge,
                          'recaptcha_response_field': response,
-                         'CaptchaForm%5Bcode%5D': '',
+                         'captcha.Form%5Bcode%5D': '',
                          "op": op_val,
                          "id": id_val,
                          "rand": rand_val,
@@ -81,14 +78,11 @@ class UpafileCom(SimpleHoster):
             self.html = self.load(self.pyfile.url, post=post_data)
 
             if 'recaptcha' not in self.html:
-                self.correctCaptcha()
-                self.setWait(10)
-                self.wait()
+                self.captcha.correct()
+                self.wait(10)
                 break
             else:
-                self.log_info('Wrong captcha')
-                #self.invalidCaptcha()
-                self.fail('Wrong Captcha')
+                self.captcha.invalid()
         else:
             self.fail("All captcha attempts failed")
 

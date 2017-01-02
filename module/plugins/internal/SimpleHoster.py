@@ -156,7 +156,7 @@ class SimpleHoster(Hoster):
 
         if html:
             if cls.OFFLINE_PATTERN and re.search(cls.OFFLINE_PATTERN, html, re.IGNORECASE) is not None:
-                info['error'] = 'offline pattern matched'
+                info['error'] = 'offline pattern matched: ' + cls.OFFLINE_PATTERN
                 info['status'] = 1
 
             elif cls.TEMP_OFFLINE_PATTERN and re.search(cls.TEMP_OFFLINE_PATTERN, html, re.IGNORECASE) is not None:

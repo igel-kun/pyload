@@ -168,7 +168,7 @@ class Plugin(object):
 
 
     def load(self, url, get={}, post={}, ref=True, cookies=True, just_header=False, decode=True,
-             multipart=False, redirect=True, req=None):
+             multipart=False, redirect=True, req=None, redir_post=True):
         """
         Load content at url and returns it
 
@@ -176,6 +176,7 @@ class Plugin(object):
         :param get:
         :param post:
         :param ref:
+        :param redir_post: resend post parameters on redirect
         :param cookies:
         :param just_header: If True only the header will be retrieved and returned as dict
         :param decode: Wether to decode the output according to http header, should be True in most cases
@@ -204,7 +205,10 @@ class Plugin(object):
             req.http.c.setopt(pycurl.FOLLOWLOCATION, 0)
         else:
             req.http.c.setopt(pycurl.FOLLOWLOCATION, 1)
-            req.http.c.setopt(pycurl.POSTREDIR, pycurl.REDIR_POST_ALL)
+            if redir_post:
+                req.http.c.setopt(pycurl.POSTREDIR, pycurl.REDIR_POST_ALL)
+            else:
+                req.http.c.setopt(pycurl.POSTREDIR, 0)
 
             if type(redirect) is int:
                 maxredirs = int(self.pyload.api.getConfigValue("UserAgentSwitcher", "maxredirs", "plugin")) or 5  #@TODO: Remove `int` in 0.4.10

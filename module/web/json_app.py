@@ -133,6 +133,7 @@ def package_order(ids):
 @login_required('DELETE')
 def abort_link(id):
     try:
+        print "Aborting download #%s" % str(id)
         PYLOAD.stopDownloads([id])
         return {"response": "success"}
     except:

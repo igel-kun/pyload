@@ -18,7 +18,7 @@ class WcryptCom(SimpleCrypter):
 
     __description__ = """Wcrypt.com decrypter plugin"""
     __license__     = "GPLv3"
-    __authors__     = [("igel", "igelkun@myopera.com")]
+    __authors__     = [("igel", None)]
 
     OFFLINE_PATTERN = r'404 Page Not Found'
 
@@ -56,13 +56,13 @@ class WcryptCom(SimpleCrypter):
         # data should now be another javascript that basically unescapes a string called "_escape"
 
         # step 3: run the second javascript code
-        m = re.search('var[^=a-zA-Z]*=(.*?);', data)
+        m = re.search('var[^=]*=(.*?);', data)
         
         if not m:
             self.log_debug('error parsing script: %s' % data)
 
         js_code2 = m.group(1)
-        data = eval_js_script(js_code2)
+        data = eval_js_script(printcmd + "(unescape(" + js_code2 + "))")
         # data should now be the HTML code of an iframe pointing to "/i.php[...]"
 
         # step 4: get the HTML from the <iframe>

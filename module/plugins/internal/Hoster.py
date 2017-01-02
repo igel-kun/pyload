@@ -11,7 +11,7 @@ import pycurl
 from module.network.HTTPRequest import BadHeader
 from module.plugins.internal.Base import Base
 from module.plugins.internal.Plugin import Fail, Retry
-from module.plugins.internal.misc import compute_checksum, encode, exists, fixurl, fsjoin, parse_name, safejoin
+from module.plugins.internal.misc import compute_checksum, encode, exists, fixurl, fsjoin, parse_name, safejoin, format_size
 
 
 # Python 2.5 compatibility hack for property.setter, property.deleter
@@ -480,8 +480,8 @@ class Hoster(Base):
 
         if not exists(dl_file):
             return
-
-        if os.stat(dl_file).st_size == 0:
+        filesize = os.stat(dl_file).st_size
+        if filesize == 0:
             if self.remove(self.last_download):
                 self.last_download = ""
             return
@@ -489,6 +489,8 @@ class Hoster(Base):
         if self.pyload.config.get('download', 'skip_existing'):
             plugin = self.pyload.db.findDuplicates(self.pyfile.id, pack_folder, self.pyfile.name)
             msg = plugin[0] if plugin else _("File exists")
+            if filesize != self.pyfile.size:
+                msg +=  _(", but file size %s differs from expected size %s") % (format_size(filesize), format_size(self.pyfile.size))
             self.skip(msg)
         else:
             dl_n = int(re.match(r'.+(\(\d+\)|)$', self.pyfile.name).group(1).strip("()") or 1)

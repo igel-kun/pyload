@@ -3,6 +3,7 @@
 import re
 from collections import defaultdict
 from module.plugins.internal.Crypter import Crypter
+from module.network.HTTPRequest import BadHeader
 
 from tempfile import NamedTemporaryFile
 
@@ -199,12 +200,21 @@ class Movie2kTo(Crypter):
                             self.log_debug('Quality: %d' % quality)
                 
                     if h_id != self.id:
-                        if self.format != 'movie':
-                            self.log_debug('detected TV show episode, loading %s/tvshows-%s-%s.html' % (self.BASE_URL, h_id, self.name))
-                            self.data = self.load('%s/tvshows-%s-%s.html' % (self.BASE_URL, h_id, self.name))
-                        else:
-                            self.log_debug('detected movie, loading %s/%s-watch-movie-%s.html' % (self.BASE_URL, self.name, h_id))
-                            self.data = self.load('%s/%s-watch-movie-%s.html' % (self.BASE_URL, self.name, h_id))
+                        # try 3 times to get the URL, waiting 30s if an error occurred to let the site some room to breathe
+                        for i in range(0,3):
+                            try:
+                                if self.format != 'movie':
+                                    self.log_debug('detected TV show episode, loading %s/tvshows-%s-%s.html' % (self.BASE_URL, h_id, self.name))
+                                    self.data = self.load('%s/tvshows-%s-%s.html' % (self.BASE_URL, h_id, self.name))
+                                else:
+                                    self.log_debug('detected movie, loading %s/%s-watch-movie-%s.html' % (self.BASE_URL, self.name, h_id))
+                                    self.data = self.load('%s/%s-watch-movie-%s.html' % (self.BASE_URL, self.name, h_id))
+                                #if all went well, break the loop
+                                break
+                            except BadHeader as e:
+                                self.data = ""
+                                self.log_info("site is struggling to keep up, waiting 30s...")
+                                self.wait(30, False)
                             
                     else:
                         self.log_debug('This is already the right ID')

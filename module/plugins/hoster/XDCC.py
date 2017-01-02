@@ -28,6 +28,12 @@ class XDCC(Hoster):
                        ("GammaC0de", "nitzo2001[AT]yahoo[DOT]com"),
                        ("igel", "")]
 
+    # NETWORK rules are commands to send to the server on connection, depending on the server name
+    NETWORK_RULES = [(r'abjects', ['JOIN #mg-chat'])]
+    # PRIVMSG rules are rules to turn private messages from anyone whose name matches rule[0] into commands using re.sub(rule[1], rule[2])
+    PRIVMSG_RULES = [(r"@staff", r".*you must /?join .*?(#[^ ]*) .*to download.*", r"JOIN \1")]
+    # ERROR patterns are patterns that, when received as a private notice, cause the download to fail
+    ERROR_PATTERN = r"(invalid pack|try again)"
 
     def setup(self):
         # TODO: find a way to do multiDL for different servers

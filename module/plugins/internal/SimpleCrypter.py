@@ -243,11 +243,11 @@ class SimpleCrypter(Crypter):
         """
         if self.premium:
             self.log_info(_("Decrypting as premium link..."))
-            self.handle_premium()
+            self.handle_premium(self.pyfile)
 
         elif not self.LOGIN_ACCOUNT:
             self.log_info(_("Decrypting as free link..."))
-            self.handle_free()
+            self.handle_free(self.pyfile)
 
         links = self.links
         self.links = []
@@ -259,17 +259,18 @@ class SimpleCrypter(Crypter):
         raise NotImplementedError
 
 
-    def handle_pages(self):
+    def handle_pages(self, pyfile):
         try:
             pages = int(re.search(self.PAGES_PATTERN, self.data).group(1))
 
         except Exception:
             pages = 1
 
+        links = self.links
         for p in xrange(2, pages + 1):
             self.data = self.load_page(p)
-            # get_links is already incremental, no need to extend links again
-            self.get_links()
+            links.extend(self.get_links())
+        self.links = links
 
 
     def check_errors(self):

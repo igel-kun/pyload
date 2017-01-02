@@ -5,6 +5,7 @@ from module.plugins.hoster.JWPlayerBased import JWPlayerBased
 
 class NeodriveCo(JWPlayerBased):
     __name__ = "NeodriveCo"
+    __status__ = "broken"
     __type__ = "hoster"
     __version__ = "0.01"
     __pattern__ = r'(?:https?://)?(?:\w*\.)*neodrive\.co/(?:share/file/|embed/)?(?P<id>\w*)'

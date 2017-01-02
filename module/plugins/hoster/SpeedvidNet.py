@@ -36,7 +36,7 @@ class SpeedvidNet(SimpleHoster):
         available_versions = re.findall(self.VERSION_PATTERN, self.data)
         self.log_info(_("%d versions available" % len(available_versions)))
         infos = dict()
-        for the_id,short_url,long_url,qual,resx,size in available_versions:
+        for the_id, short_url, long_url, qual, resx, size in available_versions:
             infos[resx] = {'id': the_id, 'mode': short_url, 'hash': long_url, 'size': size}
         
         self.log_debug('versions: %s' % str(infos))
@@ -51,11 +51,13 @@ class SpeedvidNet(SimpleHoster):
                                                      'dl':'Download Video'})
 
         # sometimes, we're not getting directly to the video, but to a page with a "Download Original Video" button
-        while re.search(self.DL_ORIG_PATTERN, self.data) is not None:
+        for i in range(0,4):
+            if re.search(self.DL_ORIG_PATTERN, self.data) is None:
+                break
             # in this case, press the button to get to the site containing the link
             action, inputs = self.parse_html_form('F1')
             self.log_debug('parsed inputs: %s' % str(inputs))
-            self.data = self.load(url, post=inputs)
+            self.data = self.load(self.pyfile.url, post=inputs)
 
         # get file from there
         self.link = re.search(self.LINK_PATTERN, self.data).group(1)

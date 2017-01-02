@@ -40,7 +40,7 @@ class OneFichierCom(SimpleHoster):
 
     NAME_PATTERN     = r'>File\s*Name :</td>\s*<td.*>(?P<N>.+?)<'
     SIZE_PATTERN     = r'>Size :</td>\s*<td.*>(?P<S>[\d.,]+) (?P<U>[\w^_]+)'
-    OFFLINE_PATTERN  = r'(?:File not found !\s*<)|(?:>The requested file has been deleted following an abuse request\.<)'
+    OFFLINE_PATTERN  = r'(?:File not found !\s*<)|(?:>The requested file has been deleted)'
     LINK_PATTERN     = r'<a href="(.+?)".*>Click here to download the file</a>'
 
     WAIT_PATTERN     = r'>You must wait \d+ minutes'

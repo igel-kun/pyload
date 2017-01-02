@@ -41,7 +41,7 @@ class RequestFactory():
         self.lock.acquire()
 
         if type == "XDCC":
-            return XDCCRequest(proxies=self.getProxies())
+            req = XDCCRequest(proxies=self.getProxies())
 
         req = Browser(self.bucket, self.getOptions())
 

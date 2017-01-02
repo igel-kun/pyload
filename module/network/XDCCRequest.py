@@ -43,7 +43,8 @@ import irc.client
 from module.plugins.Plugin import Abort, Fail, SkipDownload as Skip;
 from module.plugins.internal.misc import exists, encode
 
-
+def filter_non_printable(message):
+  return ''.join(c for c in message if ord(c) > 31)
 
 # use this custom exception to allow exiting the "while 1:" loop used by irc.client
 class Disconnect(Exception):
@@ -55,11 +56,7 @@ class XDCCRequest(irc.client.SimpleIRCClient):
     whois_answer = None
     userip_target = None
     userip_answer = None
-
-    # some bots ignore private messages but need to be messaged by ctcp
-    # this variable keeps track of whether we fell back on ctcp already
-    ctcp_fellback = False
-
+    
     # progress-related
     last_speeds = []
     last_speed_measure_time = 0
@@ -115,16 +112,17 @@ class XDCCRequest(irc.client.SimpleIRCClient):
         # some bots are known to not react to private messages, but only to CTCP requests
         # so, if we're still waiting for an answer, try to send via ctcp instead
         if self.pyfile.hasStatus('waiting'):
-            self.plugin.log_debug("XDCC - no answer to our request, requesting %s from %s using CTCP" % (self.request, self.botname))
+            self.plugin.log_debug("XDCC - requesting %s from %s by CTCP" % (self.request, self.botname))
             connection.ctcp("XDCC", self.botname, "SEND " + self.request)
+            self.ircobj.execute_delayed(30, self.quit_if_stuck, ["waiting", "Bot is ignoring our requests"])
 
 
     def request_via_privmsg(self, connection):
+        self.plugin.log_debug("XDCC - requesting %s from %s by PRIVMSG" % (self.request, self.botname))
         connection.privmsg(self.botname, "XDCC SEND " + self.request)
 
 
-    def on_join(self, connection, event):
-        # it seems that irc.client calls this way too often while we're downloading
+    def make_request(self, connection):
         if self.pyfile.hasStatus("processing"):
             self.pyfile.setStatus("waiting")
             self.request_via_privmsg(connection)
@@ -132,11 +130,22 @@ class XDCCRequest(irc.client.SimpleIRCClient):
             self.ircobj.execute_delayed(30, self.request_via_ctcp, [connection])
 
 
+    # remove all scheduled occurances of function
+    def remove_all_delayed(self, function):
+        with self.ircobj.mutex:
+            self.ircobj.delayed_commands = [cmd for cmd in self.ircobj.delayed_commands if cmd.function != function]
+
+
+    def on_join(self, connection, event):
+        self.make_request(connection)
+
+
     # try joining the given channel, prepend a '#' if neccessary
     def on_welcome(self, connection, event):
         self.external_ip = self.parse_ip_from_message(" ".join(event.arguments))
         self.plugin.log_debug("XDCC - parsed external IP %s from welcome message: %s" % (str(self.external_ip), str(event.arguments)))
 
+        # step 1: join channel
         self.plugin.log_debug("XDCC - joining channel " + self.channel)
         if irc.client.is_channel(self.channel):
             connection.join(self.channel)
@@ -147,15 +156,63 @@ class XDCCRequest(irc.client.SimpleIRCClient):
             else:
                 self.plugin.fail(_("no channel named ") + self.channel)
 
+        # step 2: apply network rules
+        if hasattr(self.plugin, "NETWORK_RULES"):
+            server = self.connection.get_server_name()
+            self.plugin.log_debug("server name is %s" % server)
+            for rule in self.plugin.NETWORK_RULES:
+                if re.search(rule[0], server, re.IGNORECASE) is not None:
+                    for command in rule[1]:
+                        self.plugin.log_debug('sending "%s" as result of network rules' % str(command))
+                        self.connection.send_raw(command)
+
+
+
+    # some servers have specific policies, which they will usually tell us in a privmsg
+    # the plugin should implement PRIVMSG_RULES as a list of triples:
+    # rule[0] should match against the sender, (at least a minimum of protection from exploits; set to "" to disable)
+    # rule[1],rule[2] should be a pair that we can feed to re.sub to turn the message into a command to send
+    # for example: 
+    # PRIVMSG_RULES = [(r"@staff", r".*you must /?join .*?(#[^ ]*) .*to download.*", r"JOIN \1")]
+    # accept messages from anyone whose name contains "@staff" & if he says something like "you must join #bla to download", send "JOIN #bla" to the server
+    # if any rules were applied, make another request 20s later (note that make_request will check if our status is "processing"
+    # which will be false, unless our dcc session gets canceled in the meantime)
+    def on_privmsg(self, connection, event):
+        self.plugin.log_debug("got a private message from %s: %s" % (event.source, str(event.arguments)))
+        if hasattr(self.plugin, "PRIVMSG_RULES"):
+            rules_followed = 0
+            message = filter_non_printable(" ".join(event.arguments))
+            for rule in self.plugin.PRIVMSG_RULES:
+                if re.search(rule[0], event.source) is not None:
+                    command = re.sub(rule[1], rule[2], message, 0, re.IGNORECASE)
+                    if command != message:
+                        self.plugin.log_debug('sending "%s" as result of privmsg rules' % str(command))
+                        self.connection.send_raw(command)
+                        rules_followed += 1
+            # if any rules were implemented, give 20s to let it sink in and retry the request
+            if rules_followed > 0:
+                self.plugin.log_debug('waiting 20s for our actions to take effect, so we can rerequest the file')
+                self.ircobj.execute_delayed(20, self.make_request, [connection])
+
+
+    def on_privnotice(self, connection, event):
+        self.plugin.log_debug("got a private notice from %s: %s" % (event.source, str(event.arguments)))
+        message = filter_non_printable(" ".join(event.arguments))
+        if hasattr(self.plugin, "ERROR_PATTERN"):
+            if re.search(self.plugin.ERROR_PATTERN, message, re.IGNORECASE) is not None:
+                self.plugin.fail(message)
+
 
     def on_nosuchnick(self, connection, event):
         self.plugin.fail(_("noone named " + self.botname + " exists on the server"))
+
 
     def on_nicknameinuse(self, connection, event):
         current_nick = self.connection.get_nickname()
         new_nick = current_nick + str(int(random.random() * 10000))
         self.plugin.log_debug('our nick (%s) is already in use, using %s instead' % (current_nick, new_nick))
         connection.nick(new_nick)
+
 
     # active ctcp connections: SEND <FILENAME> <ADDRESS> <PORT> [SIZE]
     # passive ctcp connections: SEND <FILENAME> <ADDRESS>   0   <SIZE> <ID>
@@ -204,6 +261,7 @@ class XDCCRequest(irc.client.SimpleIRCClient):
         self.plugin.info.update({'name': os.path.basename(self.filename), 'size': self.size, 'status':2})
         self.plugin.sync_info()
         self.plugin.check_duplicates()
+        self.chunkname = self.filename + ".chunk0"
 
         # create the directory
         dl_dir = encode(os.path.dirname(self.filename))
@@ -213,13 +271,15 @@ class XDCCRequest(irc.client.SimpleIRCClient):
             except Exception as e:
                 self.plugin.fail(e.message)
 
-        self.plugin.log_debug("XDCC - writing file to " + self.filename)
+        self.plugin.log_debug("XDCC - writing file to " + self.chunkname)
         self.plugin.set_permissions(dl_dir)
-        self.file = open(self.filename, "wb")
+        self.file = open(self.chunkname, "wb")
 
 
     def receive_dcc(self, connection, command):
         self.pyfile.setStatus("starting")
+        # as the bot answered, remove the scheduled CTCP request
+        self.remove_all_delayed(self.request_via_ctcp)
 
         # if the connection is passive, we will need the external IP address first, so dispatch to get it
         if command['passive'] and not self.external_ip:
@@ -355,16 +415,29 @@ class XDCCRequest(irc.client.SimpleIRCClient):
         self.ircobj.remove_global_handler("all_events", self.on_whois_answer)
 
 
+    # this function will quit the server if we are still in status "status" by the time it gets called
+    def quit_if_stuck(self, status, msg = None):
+        if self.pyfile.hasStatus(status):
+            self.plugin.fail(msg or "timeout waiting for answer")
+
 
     def on_dcc_disconnect(self, connection, event):
         self.file.close()
-        self.plugin.last_download = self.filename
         self.plugin.log_debug("Received file %s (%d kbytes)." % (self.filename, int(self.arrived/1024)))
         if self.pyfile.hasStatus("downloading"):
             if self.size and (self.size > self.arrived):
-                self.pyfile.setStatus("failed")
+                self.plugin.log_debug("File incomplete, transfer might have been canceled, let's see if we have private messages...")
+                # NOTE: some networks will not tell us their rules until after we started a download, forcefully interrupting the download
+                # so, we wait 60s for someone to tell us the rules and reset the pyfile status in preparation of a retry
+                self.pyfile.setStatus("processing")
+                self.ircobj.execute_delayed(60, self.quit_if_stuck, ["processing", "File incomplete"])
+                return
             else:
                 self.pyfile.setStatus("finished")
+                os.rename(self.chunkname, self.filename)
+                # NOTE: setting last_download checks whether the file exists, so we have to set it AFTER renaming
+                self.plugin.last_download = self.filename
+
         self.connection.quit()
 
 
@@ -398,7 +471,9 @@ class XDCCRequest(irc.client.SimpleIRCClient):
 
 
     def abortDownloads(self):
-        self.plugin.abort()
+        self.plugin.log_debug("aborting XDCC download #%s" % self.pyfile.id)
+        self.pyfile.setStatus("aborted")
+        self.ircobj.execute_delayed(1, self.quit_if_stuck, ["aborted", "Aborted"])
 
 
     def close(self):

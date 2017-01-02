@@ -65,6 +65,7 @@ class Keep2ShareCc(Account):
         set_cookie(self.req.cj, "keep2share.cc", "lang", "en")
 
         html = self.load("https://keep2share.cc/login.html",
+                         redir_post = False,
                          post={'LoginForm[username]'  : user,
                                'LoginForm[password]'  : password,
                                'LoginForm[rememberMe]': 1,
