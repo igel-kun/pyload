@@ -414,7 +414,7 @@ def exists(path):
     if os.path.exists(path):
         if os.name == "nt":
             dir, name = os.path.split(path.rstrip(os.sep))
-            return name in os.listdir(dir)
+            return name.upper() in map(str.upper, os.listdir(dir))
         else:
             return True
     else:
