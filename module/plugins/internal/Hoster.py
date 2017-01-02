@@ -6,12 +6,11 @@ import __builtin__
 import mimetypes
 import os
 import re
-import pycurl
 
 from module.network.HTTPRequest import BadHeader
 from module.plugins.internal.Base import Base
 from module.plugins.internal.Plugin import Fail, Retry
-from module.plugins.internal.misc import compute_checksum, encode, exists, fixurl, fsjoin, parse_name, safejoin, format_size
+from module.plugins.internal.misc import compute_checksum, encode, exists, fixurl, fsjoin, parse_name, safejoin
 
 
 # Python 2.5 compatibility hack for property.setter, property.deleter
@@ -34,7 +33,7 @@ if not hasattr(__builtin__.property, "setter"):
 class Hoster(Base):
     __name__    = "Hoster"
     __type__    = "hoster"
-    __version__ = "0.59"
+    __version__ = "0.60"
     __status__  = "stable"
 
     __pattern__ = r'^unmatchable$'
@@ -158,49 +157,58 @@ class Hoster(Base):
             self.check_status()
 
 
-    def isresource_from_header(self, header, url):
-        contenttype = header.get('content-type')
-        extension   = os.path.splitext(parse_name(url))[-1]
+    def isresource(self, url, redirect=True, resumable=None):
+        resource  = False
+        maxredirs = 5
 
-        if contenttype:
-            if type(contenttype) is list:
-                mimetype = contenttype[-1].split(';')[0].strip();
+        if resumable is None:
+            resumable = self.resume_download
+
+        if type(redirect) is int:
+            maxredirs = max(redirect, 1)
+
+        elif redirect:
+            maxredirs = int(self.pyload.api.getConfigValue("UserAgentSwitcher", "maxredirs", "plugin")) or maxredirs  #@TODO: Remove `int` in 0.4.10
+
+        header = self.load(url, just_header=True)
+
+        for i in xrange(1, maxredirs):
+            if not redirect or header.get('connection') == "close":
+                resumable = False
+
+            if 'content-disposition' in header:
+                resource = url
+
+            elif header.get('location'):
+                location = self.fixurl(header.get('location'), url)
+                code     = header.get('code')
+
+                if code in (301, 302) or resumable:
+                    self.log_debug(_("Redirect #%d to: %s") % (i, location))
+                    header = self.load(location, just_header=True)
+                    url = location
+                    continue
+
             else:
-                mimetype = contenttype.split(';')[0].strip()
+                contenttype = header.get('content-type')
+                extension   = os.path.splitext(parse_name(url))[-1]
 
-        elif extension:
-            mimetype = mimetypes.guess_type(extension, False)[0] or \
-                       "application/octet-stream"
-        else:
-            mimetype = None
+                if contenttype:
+                    mimetype = contenttype.split(';')[0].strip()
 
-        if mimetype and ('html' not in mimetype):
-            resource = url
-        else:
-            resource = False
+                elif extension:
+                    mimetype = mimetypes.guess_type(extension, False)[0] or \
+                               "application/octet-stream"
 
-        return resource
+                else:
+                    mimetype = None
 
-    def isresource(self, url):
-        header = False
-        try:
-            header = self.load(url, just_header=True)
-        except pycurl.error, e:
-            self.log_debug('got pycurl.error %s' % e)
-            code, msg = e.args
-            if code == 52:
-                self.log_warning(_("got an empty header as reply."))
-                # restore pycurl parameters
-                self.req.http.c.setopt(pycurl.FOLLOWLOCATION, 1)
-                self.req.http.c.setopt(pycurl.POSTREDIR, pycurl.REDIR_POST_ALL)
-                self.req.http.c.setopt(pycurl.NOBODY, 0)
-                return None
-            else:
-                raise
-        except BadHeader, e:
-            return None
+                if mimetype and (resource or 'html' not in mimetype):
+                    resource = url
+                else:
+                    resource = False
 
-        return self.isresource_from_header(header, url)
+            return resource
 
 
     def _download(self, url, filename, get, post, ref, cookies, disposition, resume, chunks):
@@ -480,8 +488,8 @@ class Hoster(Base):
 
         if not exists(dl_file):
             return
-        filesize = os.stat(dl_file).st_size
-        if filesize == 0:
+
+        if os.stat(dl_file).st_size == 0:
             if self.remove(self.last_download):
                 self.last_download = ""
             return
@@ -489,8 +497,6 @@ class Hoster(Base):
         if self.pyload.config.get('download', 'skip_existing'):
             plugin = self.pyload.db.findDuplicates(self.pyfile.id, pack_folder, self.pyfile.name)
             msg = plugin[0] if plugin else _("File exists")
-            if filesize != self.pyfile.size:
-                msg +=  _(", but file size %s differs from expected size %s") % (format_size(filesize), format_size(self.pyfile.size))
             self.skip(msg)
         else:
             dl_n = int(re.match(r'.+(\(\d+\)|)$', self.pyfile.name).group(1).strip("()") or 1)

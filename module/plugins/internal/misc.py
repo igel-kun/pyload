@@ -42,7 +42,7 @@ except ImportError:
 class misc(object):
     __name__    = "misc"
     __type__    = "plugin"
-    __version__ = "0.35"
+    __version__ = "0.36"
     __status__  = "stable"
 
     __pattern__ = r'^unmatchable$'
@@ -418,7 +418,7 @@ def exists(path):
     if os.path.exists(path):
         if os.name == "nt":
             dir, name = os.path.split(path.rstrip(os.sep))
-            return name in os.listdir(dir)
+            return name.upper() in map(str.upper, os.listdir(dir))
         else:
             return True
     else:
@@ -590,7 +590,6 @@ def str2int(value):
         return sum(numwords[word] for word in tokens)
     except:
         return 0
-
 
 def parse_time(value):
     if re.search("da(il)?y|today", value):

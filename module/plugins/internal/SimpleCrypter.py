@@ -11,7 +11,7 @@ from module.plugins.internal.misc import parse_name, replace_patterns
 class SimpleCrypter(Crypter):
     __name__    = "SimpleCrypter"
     __type__    = "crypter"
-    __version__ = "0.85"
+    __version__ = "0.87"
     __status__  = "testing"
 
     __pattern__ = r'^unmatchable$'
@@ -270,6 +270,7 @@ class SimpleCrypter(Crypter):
         for p in xrange(2, pages + 1):
             self.data = self.load_page(p)
             links.extend(self.get_links())
+
         self.links = links
 
 
