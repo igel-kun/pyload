@@ -43,6 +43,8 @@ class Keep2ShareCc(SimpleHoster):
 
     PREMIUM_ONLY_PATTERN = r'only for premium members'
 
+    PREMIUM_ONLY_PATTERN = r'only for premium members'
+
     CAPTCHA_PATTERN = r'src="(/file/captcha\.html.+?)"'
 
     WAIT_PATTERN = r'Please wait ([\d:]+) to download this file'
@@ -154,3 +156,4 @@ class Keep2ShareCc(SimpleHoster):
 
             else:
                 self.captcha.correct()
+

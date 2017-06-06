@@ -617,7 +617,6 @@ def str2int(value):
     except:
         return 0
 
-
 def parse_time(value):
     if re.search("da(il)?y|today", value):
         seconds = seconds_to_midnight()
