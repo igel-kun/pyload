@@ -104,7 +104,7 @@ class Keep2ShareCc(SimpleHoster):
         self.link = m.group(1) if m.group(1) else m.group(2)
 
 
-    def handle_captcha(self, url):
+    def handle_captcha(self):
         post_data = {'free'               : 1,
                      'freeDownloadRequest': 1,
                      'uniqueId'           : self.fid,
