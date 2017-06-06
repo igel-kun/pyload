@@ -8,7 +8,7 @@ from module.plugins.internal.Crypter import Crypter
 class SolarmovieIs(Crypter):
     __name__ = 'SolarmovieIs'
     __type__ = 'container'
-    __pattern__ = r'https?://(?:www\.)?solarmovie\.(?:is|ph)/+(.*)'
+    __pattern__ = r'https?://(?:www\.)?solarmovie\.(?:is|ph|ms)/+(.*)'
     __version__ = '0.02'
     __config__ = [('hoster_blacklist', 'str', 'List of non-accepted hosters (space separated)', '')]
     __description__ = """Solarmovie.is Container Plugin"""
