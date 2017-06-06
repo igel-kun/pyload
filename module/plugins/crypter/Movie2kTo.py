@@ -10,7 +10,7 @@ from tempfile import NamedTemporaryFile
 class Movie2kTo(Crypter):
     __name__ = 'Movie2kTo'
     __type__ = 'container'
-    __pattern__ = r'https?://(?:www\.)?movie4k(?:proxy)?\.(?:to|com|org|pe|me)/+(.*)'
+    __pattern__ = r'https?://(?:www\.)?movie4k(?:proxy)?\.(?:to|tv|com|org|pe|me)/+(.*)'
     __version__ = '0.7'
     __config__ = [('hoster_blacklist', 'str', 'List of non-accepted hosters (space separated)', ''),
                   ('dir_quality', 'bool', 'Show the quality of the footage in the folder name', 'True'),
