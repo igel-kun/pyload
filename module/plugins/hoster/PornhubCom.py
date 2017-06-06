@@ -2,92 +2,110 @@
 
 import re
 
-from module.plugins.internal.Hoster import Hoster
+from module.network.CookieJar import CookieJar
+from module.network.HTTPRequest import HTTPRequest
+
+from ..internal.misc import json
+from ..internal.SimpleHoster import SimpleHoster
+from ..internal.Plugin import Abort
 
 
-class PornhubCom(Hoster):
-    __name__    = "PornhubCom"
-    __type__    = "hoster"
-    __version__ = "0.55"
-    __status__  = "testing"
+class BIGHTTPRequest(HTTPRequest):
+    """
+    Overcome HTTPRequest's load() size limit to allow
+    loading very big web pages by overrding HTTPRequest's write() function
+    """
 
-    __pattern__ = r'http://(?:www\.)?pornhub\.com/view_video\.php\?viewkey=\w+'
-    __config__  = [("activated", "bool", "Activated", True)]
+    # @TODO: Add 'limit' parameter to HTTPRequest in v0.4.10
+    def __init__(self, cookies=None, options=None, limit=1000000):
+        self.limit = limit
+        HTTPRequest.__init__(self, cookies=cookies, options=options)
+
+    def write(self, buf):
+        """ writes response """
+        if self.limit and self.rep.tell() > self.limit or self.abort:
+            rep = self.getResponse()
+            if self.abort:
+                raise Abort()
+            f = open("response.dump", "wb")
+            f.write(rep)
+            f.close()
+            raise Exception("Loaded Url exceeded limit")
+
+        self.rep.write(buf)
+
+
+class PornhubCom(SimpleHoster):
+    __name__ = "PornhubCom"
+    __type__ = "hoster"
+    __version__ = "0.60"
+    __status__ = "testing"
+
+    __pattern__ = r'https?://(?:www\.)?pornhub\.com/view_video\.php\?viewkey=\w+'
+    __config__ = [("activated", "bool", "Activated", True),
+                  ("use_premium", "bool", "Use premium account if available", True),
+                  ("fallback", "bool", "Fallback to free download if premium fails", True),
+                  ("chk_filesize", "bool", "Check file size", True),
+                  ("max_wait", "int", "Reconnect if waiting time is greater than minutes", 10)]
 
     __description__ = """Pornhub.com hoster plugin"""
-    __license__     = "GPLv3"
-    __authors__     = [("jeix", "jeix@hasnomail.de")]
+    __license__ = "GPLv3"
+    __authors__ = [("jeix", "jeix@hasnomail.de"),
+                   ("GammaC0de", "nitzo2001[AT]yahoo[DOT]com")]
+
+    NAME_PATTERN = r'"video_title":"(?P<N>.+?)"'
+
+    TEMP_OFFLINE_PATTERN = r'^unmatchable$'  # Who knows?
+    OFFLINE_PATTERN = r'^unmatchable$'  # Who knows?
 
 
-    def process(self, pyfile):
-        self.download_html()
-        if not self.file_exists():
-            self.offline()
+    @classmethod
+    def get_info(cls, url="", html=""):
+        info = super(PornhubCom, cls).get_info(url, html)
+        # Unfortunately, NAME_PATTERN does not include file extension so we blindly add '.mp4' as an extension.
+        # (hopefully all links are '.mp4' files)
+        if 'name' in info:
+            info['name'] += ".mp4"
 
-        pyfile.name = self.get_file_name()
-        self.download(self.get_file_url())
+        return info
 
+    def setup(self):
+        self.resume_download = True
+        self.multiDL = True
 
-    def download_html(self):
-        url = self.pyfile.url
-        self.data = self.load(url)
+        try:
+            self.req.http.close()
+        except Exception:
+            pass
 
+        self.req.http = BIGHTTPRequest(
+            cookies=CookieJar(None),
+            options=self.pyload.requestFactory.getOptions(),
+            limit=2000000)
 
-    def get_file_url(self):
-        """
-        Returns the absolute downloadable filepath
-        """
-        if not self.data:
-            self.download_html()
+    def handle_free(self, pyfile):
+        m = re.search(r'<div class="video-wrapper">.+?<script type="text/javascript">(.+?)</script>', self.data, re.S)
+        if m is None:
+            self.error(_("Player Javascript data not found"))
 
-        url = "http://www.pornhub.com//gateway.php"
-        video_id = self.pyfile.url.split('=')[-1]
-        #: Thanks to jD team for this one  v
-        post_data = "\x00\x03\x00\x00\x00\x01\x00\x0c\x70\x6c\x61\x79\x65\x72\x43\x6f\x6e\x66\x69\x67\x00\x02\x2f\x31\x00\x00\x00\x44\x0a\x00\x00\x00\x03\x02\x00"
-        post_data += chr(len(video_id))
-        post_data += video_id
-        post_data += "\x02\x00\x02\x2d\x31\x02\x00\x20"
-        post_data += "add299463d4410c6d1b1c418868225f7"
+        script = m.group(1)
 
-        content = self.load(url, post=str(post_data))
+        m = re.search(r'qualityItems_\d+', script)
+        if m is None:
+            self.error(_("`qualityItems` variable no found"))
 
-        new_content = ""
-        for x in content:
-            if ord(x) < 32 or ord(x) > 176:
-                new_content += '#'
-            else:
-                new_content += x
+        result_var = re.search(r'qualityItems_\d+', script).group(0)
 
-        content = new_content
+        script = "".join(re.findall(r'^\s*var .+', script, re.M))
+        script = re.sub(r"[\n\t]|/\*.+?\*/", "", script)
+        script += "JSON.stringify(%s);" % result_var
 
-        return re.search(r'flv_url.*(http.*?)##post_roll', content).group(1)
+        res = self.js.eval(script)
+        json_data = json.loads(res)
 
+        urls = dict([(int(re.search("^(\d+)", _x['text']).group(0)), _x['url'])
+                     for _x in json_data if _x['url']])
 
-    def get_file_name(self):
-        if not self.data:
-            self.download_html()
+        quality = max(urls.keys())
 
-        m = re.search(r'<title.+?>(.+?) - ', self.data)
-        if m is not None:
-            name = m.group(1)
-        else:
-            matches = re.findall('<h1>(.*?)</h1>', self.data)
-            if len(matches) > 1:
-                name = matches[1]
-            else:
-                name = matches[0]
-
-        return name + '.flv'
-
-
-    def file_exists(self):
-        """
-        Returns True or False
-        """
-        if not self.data:
-            self.download_html()
-
-        if re.search(r'This video is no longer in our database or is in conversion', self.data):
-            return False
-        else:
-            return True
+        self.link = urls[quality]
