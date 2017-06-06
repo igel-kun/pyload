@@ -41,11 +41,15 @@ class Keep2ShareCc(SimpleHoster):
     LINK_PREMIUM_PATTERN = r'window\.location\.href = \'(.+?)\';'
     UNIQUE_ID_PATTERN = r"data: {uniqueId: '(?P<uID>\w+)', free: 1}"
 
-    PREMIUM_ONLY_PATTERN = r'only for premium members'
+    PREMIUM_ONLY_PATTERN = r'only for premium (?:members|users)'
 
     PREMIUM_ONLY_PATTERN = r'only for premium members'
 
     CAPTCHA_PATTERN = r'src="(/file/captcha\.html.+?)"'
+    WAIT_PATTERN         = r'Please wait ([\d:]+) to download this file'
+    TEMP_ERROR_PATTERN   = r'>\s*(Download count files exceed|Traffic limit exceed|Free account does not allow to download more than one file at the same time)'
+    ERROR_PATTERN        = r'>\s*(Free user can\'t download large files|You no can access to this file|file is no longer available|This is private file)'
+>>>>>>> a73d607350eebb3417cd3c178c686def9a581ca9
 
     WAIT_PATTERN = r'Please wait ([\d:]+) to download this file'
     TEMP_ERROR_PATTERN = r'>\s*(Download count files exceed|Traffic limit exceed|Free account does not allow to download more than one file at the same time)'
@@ -57,12 +61,13 @@ class Keep2ShareCc(SimpleHoster):
     # then, the download request goes to k2s.cc but the captcha request goes to keep2s.cc
     # this causes correctly solved captchas to be considered wrong :(
     # to combat this, the following function follows all redirects and updates self.pyfile.url
-    def update_url(self):
+    def setup(self):
         header = self.load(self.pyfile.url, just_header = True)
         while 'location' in header:
             self.log_debug('got redirected to %s' % str(header['location']))
             self.pyfile.url = header['location']
             header = self.load(self.pyfile.url, just_header = True)
+        super(Keep2ShareCc, self).setup()
 
 
     def check_errors(self):
@@ -94,7 +99,6 @@ class Keep2ShareCc(SimpleHoster):
 
 
     def handle_free(self, pyfile):
-        self.update_url()
         self.check_errors()
 
         m = re.search(r'<input type="hidden" name="slow_id" value="(.+?)">', self.data)
@@ -104,11 +108,14 @@ class Keep2ShareCc(SimpleHoster):
         else:
             self.fid  = m.group(1)
 
-        self.data = self.load(pyfile.url, post={'yt0': '', 'slow_id': self.fid})
+        self.fid  = m.group(1)
+
+        self.data = self.load(pyfile.url, post={'yt0': '',
+                                                'slow_id': self.fid})
 
         # self.log_debug(self.fid)
         self.log_debug('URL: %s' % pyfile.url)
-        
+
         self.check_errors()
 
         m = re.search(self.LINK_FREE_PATTERN, self.data)
@@ -116,8 +123,8 @@ class Keep2ShareCc(SimpleHoster):
             self.handle_captcha()
 
             m = re.search(r'<div id="download-wait-timer".*>\s*(\d+).+?</div>', self.data)
-            if m is not None:
-                self.wait(m.group(1))
+            if m:
+                self.wait(m.group(1), reconnect=False)
 
             # get the uniqueId from the html code
             m = re.search(self.UNIQUE_ID_PATTERN, self.data)
@@ -133,11 +140,18 @@ class Keep2ShareCc(SimpleHoster):
                 self.error(_("Free download link not found"))
 
         # if group 1 did not match, check group 2
-        self.link = m.group(1) or m.group(2)
+        self.link = m.group(1) if m.group(1) else m.group(2)
+
 
     def handle_captcha(self):
-        url, inputs = self.parse_html_form('id="captcha-form"')
-        if inputs is not None:
+        post_data = {'free'               : 1,
+                     'freeDownloadRequest': 1,
+                     'uniqueId'           : self.fid,
+                     'yt0'                : ''}
+
+        m = re.search(r'id="(captcha-form)"', self.data)
+        if m is not None:
+            self.log_debug("Captcha form found", m.group(0))
             m = re.search(self.CAPTCHA_PATTERN, self.data)
             if m is not None:
                 captcha_url = urlparse.urljoin(self.pyfile.url, m.group(1))

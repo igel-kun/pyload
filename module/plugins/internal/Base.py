@@ -352,12 +352,7 @@ class Base(Plugin):
 
         self.log_info(_("Waiting %s...") % format_time(wait_time))
 
-        if self.wantReconnect:
-            self.log_info(_("Requiring reconnection..."))
-            if self.account:
-                self.log_warning(_("Reconnection ignored due logged account"))
-
-        if not self.wantReconnect or self.account:
+        if not self.wantReconnect:
             while self.pyfile.waitUntil > time.time():
                 self.check_status()
                 time.sleep(2)
@@ -372,9 +367,10 @@ class Base(Plugin):
                     self.wantReconnect = False
 
                     self.req.clearCookies()
-                    raise Reconnect
-
+                    break
                 time.sleep(2)
+            self.wantReconnect = False
+            raise Reconnect
 
         self.waiting = False
         self.pyfile.status = status  # @NOTE: Recheck in 0.4.10

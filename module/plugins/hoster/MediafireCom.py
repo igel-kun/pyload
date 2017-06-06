@@ -68,6 +68,12 @@ class MediafireCom(SimpleHoster):
                 self.fail("ReCaptcha form not found")
 
     def handle_free(self, pyfile):
+        # first try without a captcha or password
+        m = re.search(self.LINK_FREE_PATTERN, self.data)
+        if m is not None:
+            self.link = m.group(1)
+            return
+
         self.handle_captcha()
 
         if self.PASSWORD_PATTERN in self.data:

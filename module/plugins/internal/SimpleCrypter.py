@@ -194,7 +194,7 @@ class SimpleCrypter(Crypter):
         self.pyfile.url = replace_patterns(
             self.pyfile.url, self.URL_REPLACEMENTS)
 
-    def decrypt(self):
+    def decrypt(self, pyfile):
         self._prepare()
 
         if self.direct_dl:
@@ -214,7 +214,7 @@ class SimpleCrypter(Crypter):
             self.links.extend(links)
 
             if self.PAGES_PATTERN:
-                self.handle_pages()
+                self.handle_pages(pyfile)
 
     def handle_free(self, pyfile):
         if not self.LINK_FREE_PATTERN:
@@ -244,11 +244,11 @@ class SimpleCrypter(Crypter):
         """
         if self.premium:
             self.log_info(_("Decrypting as premium link..."))
-            self.handle_premium()
+            self.handle_premium(self.pyfile)
 
         elif not self.LOGIN_ACCOUNT:
             self.log_info(_("Decrypting as free link..."))
-            self.handle_free()
+            self.handle_free(self.pyfile)
 
         links = self.links
         self.links = []

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-from module.plugins.hoster.XFileSharing import XFileSharing
+from module.plugins.hoster.XFileSharingHoster import XFileSharingHoster
 
 
-class XFileSharingLite(XFileSharing):
+class XFileSharingLite(XFileSharingHoster):
     __name__ = "XFileSharingLite"
     __type__ = "hoster"
     __pattern__ = r"http://(?:\w*\.)*(?P<DOMAIN>vodlocker\.com|vodlockers\.tk|played\.to|faststream\.in)/\w{12}"
@@ -20,4 +20,5 @@ class XFileSharingLite(XFileSharing):
     def setup(self):
         self.multiDL = True
         self.chunkLimit = 1
+        self.resume_download = True
 

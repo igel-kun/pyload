@@ -8,15 +8,15 @@ from module.plugins.internal.Crypter import Crypter
 class SolarmovieIs(Crypter):
     __name__ = 'SolarmovieIs'
     __type__ = 'container'
-    __pattern__ = r'https?://(?:www\.)?solarmovie\.(?:is|ph)/+(.*)'
-    __version__ = '0.1'
+    __pattern__ = r'https?://(?:www\.)?solarmovie\.(?:is|ph|ms)/+(.*)'
+    __version__ = '0.02'
     __config__ = [('hoster_blacklist', 'str', 'List of non-accepted hosters (space separated)', '')]
     __description__ = """Solarmovie.is Container Plugin"""
     __author_name__ = ('igel')
     __author_mail__ = ('')
 
-    BASE_URL = 'http://www.solarmovie.is'
-    CINE_BASE_URL = 'http://cinema.solarmovie.is'
+    BASE_URL = 'https://www.solarmovie.ph'
+    CINE_BASE_URL = 'https://cinema.solarmovie.ph'
     PLAY_BASE = '/link/play/'
     TV_URL_PATH_PATTERN = r'tv/(?P<name>.*?)-(?P<year>\d+)(?P<remain>/.*)'
     TV_SEASON_URL_PATH_PATTERN = r'season-(?P<snr>\d+)(?P<remain>/.*)'
@@ -75,7 +75,7 @@ class SolarmovieIs(Crypter):
     # extract links from self.html
     def getLinks(self):
         # read config
-        hoster_blacklist = re.findall(r'\b(\w+?)\b', self.get_config('hoster_blacklist'))
+        hoster_blacklist = re.findall(r'\b(\w+?)\b', self.config.get('hoster_blacklist'))
         
         # get the links
         ids = re.findall(self.ID_PATTERN, self.html, re.MULTILINE | re.DOTALL)

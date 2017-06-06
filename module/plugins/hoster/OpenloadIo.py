@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import re
+import os
 
 from module.network.RequestFactory import getURL as get_url
 
@@ -31,8 +32,8 @@ class OpenloadIo(SimpleHoster):
     API_URL = 'https://api.openload.co/1'
 
     _DOWNLOAD_TICKET_URI_PATTERN = '/file/dlticket?file=%s'
-    _DOWNLOAD_FILE_URI_PATTERN = '/file/dl?file=%s&ticket=%s&captcha_response=%s'
-    _FILE_INFO_URI_PATTERN = '/file/info?file=%s'
+    _DOWNLOAD_FILE_URI_PATTERN   = '/file/dl?file=%s&ticket=%s&captcha_response=%s'
+    _FILE_INFO_URI_PATTERN       = '/file/info?file=%s'
 
     OFFLINE_PATTERN = r'>We are sorry'
 
@@ -90,6 +91,11 @@ class OpenloadIo(SimpleHoster):
         else:
             self.wait(ticket_json['result']['wait_time'])
             ticket = ticket_json['result']['ticket']
+            captcha_url = ticket_json['result']['captcha_url']
+            file_type = os.path.splitext(captcha_url)[1]
+            
+            # solve the captcha (try using OCR first - why is this not standard, btw?)
+            captcha_result = self.captcha.decrypt_image(img = captcha_url, input_type = file_type, ocr = True)
 
             download_json = self._load_json(
                 self._DOWNLOAD_FILE_URI_PATTERN %

@@ -16,3 +16,4 @@ class BitshareCom(DeadHoster):
     __license__ = "GPLv3"
     __authors__ = [("Paul King", None),
                    ("fragonib", "fragonib[AT]yahoo[DOT]es")]
+

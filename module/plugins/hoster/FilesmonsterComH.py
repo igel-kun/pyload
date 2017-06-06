@@ -31,33 +31,26 @@ class FilesmonsterComH(SimpleHoster):
     __author_name__ = ("igel")
 
     BASE_URL = "http://www.filesmonster.com/"
-    RECAPTCHA_KEY_PATTERN = r'"http://api.recaptcha.net/challenge\?k=(.*?)[\&"]'
     WAIT_TIME_PATTERN = r"Please wait\s*<span id='sec'>(\d+)</span>"
     LINK_PATTERN = r"onclick=\"get_link\('(.*?)'\)"
     TEMPORARY_OFFLINE_PATTERN = r"You have started to download"
     NEXT_FILE_WAIT_PATTERN = r"will be available for download in (\d+)"
     WRONG_CAPTCHA_PATTERN = r"<p class=\"error\">Wrong captcha"
 
-    def handle_captcha(self):
-      m = re.search(self.RECAPTCHA_KEY_PATTERN, self.html)
-      if m:
-        captcha_key = m.group(1)
-        self.log_debug('found captcha key ' + captcha_key)
-
-        captcha = ReCaptcha(self)
+    def handle_captcha(self, pyfile):
+        self.captcha = ReCaptcha(pyfile)
         for i in range(5):
-          challenge, response = captcha.challenge(captcha_key)
+          challenge, response = self.captcha.challenge()
 
-          self.html = self.load(self.pyfile.url, cookies=True, post={
+          self.data = self.load(self.pyfile.url, cookies=True, post={
             "recaptcha_challenge_field": challenge,
             "recaptcha_response_field": response,
           })
 
-          if self.WRONG_CAPTCHA_PATTERN in self.html:
-            self.invalidCaptcha()
-            self.log_debug('captcha try %d/5 was invalid' % i)
+          if self.WRONG_CAPTCHA_PATTERN in self.data:
+            self.captcha.invalid()
           else:
-            self.correctCaptcha()
+            self.captcha.correct()
             break
         else:
           self.fail("No valid captcha solution received")
@@ -66,7 +59,7 @@ class FilesmonsterComH(SimpleHoster):
 
 
     def handle_wait(self):
-      m = re.search(self.WAIT_TIME_PATTERN, self.html)
+      m = re.search(self.WAIT_TIME_PATTERN, self.data)
       if m:
         self.log_debug('waiting %s seconds' % m.group(1))
         self.setWait(m.group(1))
@@ -74,8 +67,8 @@ class FilesmonsterComH(SimpleHoster):
       else:
         self.parseError('could not parse the wait time')
 
-    def getLink(self):
-      m = re.search(self.LINK_PATTERN, self.html)
+    def get_link(self):
+      m = re.search(self.LINK_PATTERN, self.data)
       if m:
         self.log_debug('reading JSON data from ' + m.group(1))
         json = json_loads(self.load(self.BASE_URL + m.group(1), decode=True, cookies=True))
@@ -88,9 +81,9 @@ class FilesmonsterComH(SimpleHoster):
 
 
     def getFileInfo(self):
-      m = re.search(self.TEMPORARY_OFFLINE_PATTERN, self.html)
+      m = re.search(self.TEMPORARY_OFFLINE_PATTERN, self.data)
       if m:
-        m = re.search(self.NEXT_FILE_WAIT_PATTERN, self.html)
+        m = re.search(self.NEXT_FILE_WAIT_PATTERN, self.data)
         if m:
           wait_time = 60 * int(m.group(1))
           self.log_debug('need to wait %d sec to download the file' % wait_time)
@@ -106,13 +99,12 @@ class FilesmonsterComH(SimpleHoster):
 
 
     def handle_free(self):
-      self.html = self.load(self.pyfile.url, decode=True, cookies=True)
+      self.data = self.load(self.pyfile.url, decode=True, cookies=True)
       # filesmonster starts off with a captcha, so polite...
-      self.handle_captcha()
+      self.handle_captcha(self.pyfile)
       # next, we get to wait
       self.handle_wait()
       # and finally, we can get the link
-      url = self.getLink()
-      self.download(url, disposition=True, cookies=True)
+      self.link = self.get_link()
 
 

@@ -346,7 +346,15 @@ class Account(Plugin):
         premium_accounts = {}
 
         for user in self.accounts:
-            info = self.accounts[user]['plugin'].get_info()
+            acc = self.accounts[user]
+            self.log_debug('checking account: %s' % str(acc))
+
+            # if something went wrong with the login, don't select that account
+            if not acc['plugin']:
+                acc['timestamp'] = 0;
+                continue;
+
+            info = acc['plugin'].get_info()
             data = info['data']
 
             if not info['login']['valid']:
@@ -366,10 +374,8 @@ class Account(Plugin):
                                      % (user, time_data))
 
             if data['trafficleft'] == 0:
-                self.log_warning(
-                    _("Not using account `%s` because the account has no traffic left") %
-                    user)
-                continue
+                self.log_warning(_("Not considering account `%s` as premium since it has no traffic left") % user)
+                data['premium'] = False
 
             if time.time() > data['validuntil'] > 0:
                 self.log_warning(

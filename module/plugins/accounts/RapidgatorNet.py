@@ -56,31 +56,35 @@ class RapidgatorNet(Account):
                 'sid': sid}
 
     def signin(self, user, password, data):
-        try:
-            html = self.load(urlparse.urljoin(self.API_URL, "login"),
-                             post={'username': user,
-                                   'password': password})
+        for i in xrange(1, 4):
+            # note: Rapidgator account login seems flakey from time to time, so try 3 times before giving up
+            self.log_debug("login try %d/3" % int(i))
+            try:
+                html = self.load(urlparse.urljoin(self.API_URL, "login"),
+                                 post={'username': user,
+                                       'password': password})
 
-            self.log_debug("API:LOGIN", html)
+                self.log_debug("API:LOGIN", html)
 
-            json_data = json.loads(html)
+                json_data = json.loads(html)
 
-            if json_data['response_status'] == 200:
-                data['sid'] = str(json_data['response']['session_id'])
+                if json_data['response_status'] == 200:
+                    data['sid'] = str(json_data['response']['session_id'])
 
-                if 'reset_in' in json_data['response']:
-                    self.timeout = float(json_data['response']['reset_in'])
-                    self.TUNE_TIMEOUT = False
+                    if 'reset_in' in json_data['response']:
+                        self.timeout = float(json_data['response']['reset_in'])
+                        self.TUNE_TIMEOUT = False
+
+                    else:
+                        self.TUNE_TIMEOUT = True
 
                 else:
-                    self.TUNE_TIMEOUT = True
-
+                    self.log_error(json_data['response_details'])
+                    self.fail_login()
                 return
 
-            else:
-                self.log_error(json_data['response_details'])
+            except Exception, e:
+                self.log_error(e, trace=True)
+            
+            self.fail_login()
 
-        except Exception, e:
-            self.log_error(e, trace=True)
-
-        self.fail_login()

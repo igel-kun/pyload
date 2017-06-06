@@ -158,7 +158,7 @@ class Plugin(object):
         raise Fail(encode(msg))  # @TODO: Remove `encode` in 0.4.10
 
     def load(self, url, get={}, post={}, ref=True, cookies=True, just_header=False, decode=True,
-             multipart=False, redirect=True, req=None):
+             multipart=False, redirect=True, req=None, redir_post=True):
         """
         Load content at url and returns it
 
@@ -166,6 +166,7 @@ class Plugin(object):
         :param get:
         :param post:
         :param ref:
+        :param redir_post: resend post parameters on redirect
         :param cookies:
         :param just_header: If True only the header will be retrieved and returned as dict
         :param decode: Wether to decode the output according to http header, should be True in most cases
@@ -181,24 +182,27 @@ class Plugin(object):
         if req is False:
             req = get_request()
             req.setOption("timeout", 60)  # @TODO: Remove in 0.4.10
-
         elif not req:
             req = self.req
+
+        pyc = (req.http if hasattr(req, "http") else req).c
 
         #@TODO: Move to network in 0.4.10
         if isinstance(cookies, list):
             set_cookies(req.cj, cookies)
-
         #@TODO: Move to network in 0.4.10
         if not redirect:
-            (req.http if hasattr(req, "http") else req).c.setopt(pycurl.FOLLOWLOCATION, 0)
+            pyc.setopt(pycurl.FOLLOWLOCATION, 0)
         else:
-            (req.http if hasattr(req, "http") else req).c.setopt(pycurl.FOLLOWLOCATION, 1)
-            (req.http if hasattr(req, "http") else req).c.setopt(pycurl.POSTREDIR, pycurl.REDIR_POST_ALL)
+            pyc.setopt(pycurl.FOLLOWLOCATION, 1)
+            if redir_post:
+                pyc.setopt(pycurl.POSTREDIR, pycurl.REDIR_POST_ALL)
+            else:
+                pyc.setopt(pycurl.POSTREDIR, 0)
 
             if type(redirect) is int:
                 maxredirs = int(self.pyload.api.getConfigValue("UserAgentSwitcher", "maxredirs", "plugin")) or 5  #@TODO: Remove `int` in 0.4.10
-                (req.http if hasattr(req, "http") else req).c.setopt(pycurl.MAXREDIRS, redirect)
+                pyc.setopt(pycurl.MAXREDIRS, redirect)
 
         #@TODO: Move to network in 0.4.10
         if isinstance(ref, basestring):
