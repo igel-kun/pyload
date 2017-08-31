@@ -31,6 +31,7 @@ class Keep2ShareCc(SimpleHoster):
     DISPOSITION = False  # @TODO: Recheck in v0.4.10
 
     URL_REPLACEMENTS = [(__pattern__ + ".*", "https://keep2s.cc/file/\g<ID>")]
+    WAIT_PATTERN         = r'Please wait ([\d:]+) to download this file'
 
     API_URL = "https://keep2share.cc/api/v2/"
     #: See https://github.com/keep2share/api
@@ -78,6 +79,14 @@ class Keep2ShareCc(SimpleHoster):
         self.resume_download = True
 
     def handle_free(self, pyfile):
+        # unfortunately, checking for a wait time via the API costs a captcha, so we have to do it via HTML
+        m = re.search(r'name="slow_id" value="(.+?)"', self.data)
+        if m is not None:
+            self.data = self.load(pyfile.url, post = {'slow_id' : m.group(1)})
+            self.check_errors()
+        else:
+            self.fail(_('could not parse slow_id'))
+
         file_id = self.info['pattern']['ID']
 
         if self.info['access'] == "premium":
