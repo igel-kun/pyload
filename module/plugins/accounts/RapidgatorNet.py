@@ -38,11 +38,13 @@ class RapidgatorNet(Account):
             json_data = json.loads(html)
 
             if json_data['response_status'] == 200:
-                validuntil = json_data['response']['expire_date']
-                # @TODO: Remove `/ 1024` in 0.4.10
-                trafficleft = float(
-                    json_data['response']['traffic_left']) / 1024
-                premium = True
+                if json_data['response']:
+                    validuntil = json_data['response']['expire_date']
+                    # @TODO: Remove `/ 1024` in 0.4.10
+                    trafficleft = float(json_data['response']['traffic_left']) / 1024
+                    premium = True
+                else:
+                    premium = False
 
             else:
                 self.log_error(json_data['response_details'])
