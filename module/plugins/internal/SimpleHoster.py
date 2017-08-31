@@ -118,7 +118,7 @@ class SimpleHoster(Hoster):
     OFFLINE_PATTERN      = r'[^\w](404\s|[Ii]nvalid|[Oo]ffline|[Dd]eleted|[Rr]emoved|([Nn]o(t|thing)?|sn\'t) (found|(longer )?(available|exist)))'
     TEMP_OFFLINE_PATTERN = r'[^\w](503\s|[Mm]aint(e|ai)nance|[Tt]emp([.-]|orarily)|[Mm]irror)'
     # set SEARCH_TYE['NAME_PATTERN'] = re.MULTILINE | re.DOTALL for example, to change search behavior
-    SEARCH_TYPE          = None
+    SEARCH_FLAGS          = None
 
     WAIT_PATTERN = None
     PREMIUM_ONLY_PATTERN = None
@@ -173,7 +173,7 @@ class SimpleHoster(Hoster):
                     try:
                         attr = getattr(cls, pattern)
                         try:
-                            search_flags = getattr(cls, 'SEARCH_TYPE').get(pattern, 0)
+                            search_flags = getattr(cls, 'SEARCH_FLAGS').get(pattern, 0)
                         except Exception:
                             search_flags = 0
 

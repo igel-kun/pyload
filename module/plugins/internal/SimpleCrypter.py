@@ -58,6 +58,7 @@ class SimpleCrypter(Crypter):
 
     NAME_REPLACEMENTS = []
     URL_REPLACEMENTS = []
+    SEARCH_FLAGS = {}
 
     COOKIES = True   #: or False or list of tuples [(domain, name, value)]
     #: Set to True to looking for direct link (as defined in handle_direct method), set to None to do it if self.account is True else False
@@ -109,15 +110,14 @@ class SimpleCrypter(Crypter):
                     pass
 
         if html:
-            if cls.OFFLINE_PATTERN and re.search(
-                    cls.OFFLINE_PATTERN, html) is not None:
+            if cls.OFFLINE_PATTERN and re.search(cls.OFFLINE_PATTERN, html) is not None:
                 info['status'] = 1
 
             elif cls.TEMP_OFFLINE_PATTERN and re.search(cls.TEMP_OFFLINE_PATTERN, html) is not None:
                 info['status'] = 6
 
             elif cls.NAME_PATTERN:
-                m = re.search(cls.NAME_PATTERN, html)
+                m = re.search(cls.NAME_PATTERN, html, cls.SEARCH_FLAGS.get('NAME_PATTERN', 0))
                 if m is not None:
                     info['status'] = 2
                     info['pattern'].update(m.groupdict())
@@ -217,10 +217,11 @@ class SimpleCrypter(Crypter):
                 self.handle_pages(pyfile)
 
     def handle_free(self, pyfile):
-        if not self.LINK_FREE_PATTERN:
+        if self.LINK_FREE_PATTERN:
+            links = re.findall(self.LINK_FREE_PATTERN, self.data)
+        else:
             self.log_warning(_("Free decrypting not implemented"))
 
-        links = re.findall(self.LINK_FREE_PATTERN, self.data)
         if not links:
             self.error(_("Free decrypted link not found"))
         else:
