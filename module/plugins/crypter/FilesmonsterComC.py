@@ -24,62 +24,24 @@ from module.plugins.internal.SimpleCrypter import SimpleCrypter
 class FilesmonsterComC(SimpleCrypter):
     __name__ = "FilesmonsterComC"
     __type__ = "crypter"
-    __pattern__ = r"http://(?:w{3}\.)?filesmonster\.com/download.php\?id=.*"
-    __version__ = "0.01"
+    __pattern__ = r"https?://(?:w{3}\.)?filesmonster\.com/(?:download|folders)\.php\?f?id=.*"
+    __version__ = "0.02"
     __description__ = """Filesmonster.com Crypter Plugin"""
     __author_name__ = ("igel")
-    PREFORM_PATTERN = r"<form id='slowdownload' method=\"post\".*?action=\"(.*?)\">"
-    BASE_URL = "http://www.filesmonster.com/"
-    JSON_URL_PATTERN = "Event.observe\(window, 'load', function\(\)\{reserve_ticket\('(.*?)'"
-    URL_TEMPLATE_PATTERN = "step2UrlTemplate = '(.*?/)!!!/';"
-    TEMPORARY_OFFLINE_PATTERN = r"You have started to download"
-    NEXT_FILE_WAIT_PATTERN = r"will be available for download in (\d+)"
 
-    def getFileInfo(self):
-      m = re.search(self.TEMPORARY_OFFLINE_PATTERN, self.html)
-      if m:
-        m = re.search(self.NEXT_FILE_WAIT_PATTERN, self.html)
+    LIST_PATTERN = r'<table class="table files">(.*?)</table>'
+    LINK_FREE_PATTERN = r'<a href="(.*?)">'
+    TEMP_OFFLINE_PATTERN = r"You have started to download"
+    WAIT_PATTERN = r"will be available for download in (\d+)"
+    NAME_PATTERN = r'Folder title.*?<td>(?P<N>.*?)</td>'
+    SEARCH_FLAGS = {'NAME_PATTERN': re.MULTILINE | re.DOTALL}
+
+    def get_links(self):
+        # find the link to the linklist
+        m = re.search(self.LIST_PATTERN, self.data, flags = re.MULTILINE | re.DOTALL)
         if m:
-          wait_time = 60 * int(m.group(1))
-          self.log_debug('need to wait %d sec to download the file' % wait_time)
-          # wait time for next file is usually in minutes
-          self.setWait(wait_time, reconnect = True)
-          self.wait()
-          self.retry()
+            self.data = m.group(1)
+            return super(FilesmonsterComC, self).get_links()
         else:
-          self.parseError('error parsing time to wait for the next file')
-      else:
-        self.log_debug('file can be downloaded')
+            self.error(_('could not find link list'))
 
-
-    def getLinks(self):
-      # first, check whether we can download at the moment
-      self.getFileInfo()
-      # find the link to the linklist
-      m = re.search(self.PREFORM_PATTERN, self.html, flags = re.MULTILINE | re.DOTALL)
-      if m:
-        self.log_debug('loading free URL ' + m.group(1))
-        self.html = self.load(self.BASE_URL + m.group(1), decode=True)
-      # find the URL template
-      m = re.search(self.URL_TEMPLATE_PATTERN, self.html)
-      if m:
-        url_template = self.BASE_URL + m.group(1)
-        self.log_debug('found URL template ' + m.group(1))
-        #find the linklist
-        m = re.search(self.JSON_URL_PATTERN, self.html)
-        if m:
-          self.log_debug('reading JSON data from ' + m.group(1))
-          json = json_loads(self.load(self.BASE_URL + m.group(1), decode=True))
-          links = []
-          if json['status'] == 'success':
-            for volume in json['volumes']:
-              links.append(url_template + volume['dlcode'])
-              self.log_debug('adding link with dlcode ' + volume['dlcode'])
-            return links
-          else:
-            #TODO: handle errors
-            self.parseError("unhandled error: status " + json['status'])
-        else:
-          self.parseError("could not find URL template")
-      else:
-        self.parseError("cound not find JSON link")
