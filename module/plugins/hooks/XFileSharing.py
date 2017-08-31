@@ -34,12 +34,12 @@ class XFileSharing(Addon):
         "fileparadox.in", "filevice.com", "hostingbulk.com", "junkyvideo.com",
         "ravishare.com", "salefiles.com", "sendmyway.com", "sharebeast.com",
         "sharesix.com", "verzend.be", "worldbytez.com",
-        "xvidstage.com",
+        "xvidstage.com", "filespace.com",
         # NOT TESTED:
         "101shared.com", "4upfiles.com", "filemaze.ws", "filenuke.com",
         "linkzhost.com", "mightyupload.com", "rockdizfile.com", "sharerepo.com",
-        "shareswift.com", "uploadbaz.com", "uploadc.com", "vidbull.com",
-        "zalaa.com", "zomgupload.com", "allmyvideos.net",
+        "shareswift.com", "uploadbaz.com", "vidbull.com",
+        "zomgupload.com", "allmyvideos.net",
         # NOT WORKING:
         "amonshare.com", "banicrazy.info", "boosterking.com", "host4desi.com",
         "laoupload.com", "rd-fs.com"]
