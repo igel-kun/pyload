@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 
 import re
+import urllib
+
+from module.network.HTTPRequest import BadHeader
 
 from ..captcha.ReCaptcha import ReCaptcha
 from ..internal.SimpleHoster import SimpleHoster
@@ -9,10 +12,10 @@ from ..internal.SimpleHoster import SimpleHoster
 class RockfileEu(SimpleHoster):
     __name__ = "RockfileEu"
     __type__ = "hoster"
-    __version__ = "0.06"
+    __version__ = "0.13"
     __status__ = "testing"
 
-    __pattern__ = r'https?://(?:www\.)?rockfile\.eu/\w{12}.html'
+    __pattern__ = r'https?://(?:www\.)?rockfile\.eu/(?P<ID>\w{12}).html'
     __config__ = [("activated", "bool", "Activated", True),
                   ("use_premium", "bool", "Use premium account if available", True),
                   ("fallback", "bool", "Fallback to free download if premium fails", True),
@@ -26,10 +29,11 @@ class RockfileEu(SimpleHoster):
     NAME_PATTERN = r'name="fname" value="(?P<N>.+?)"'
     SIZE_PATTERN = r'var iniFileSize = (\d+)'
 
-    WAIT_PATTERN = r'<span id="countdown_str".+?>(\d+)</span>'
+    WAIT_PATTERN = r'<span id="countdown_str".+?><span .+?>(\d+)</span>'
     DL_LIMIT_PATTERN = r'You have to wait (?:<b>)?(.+?)(?:</b>)? until you can start another download'
 
-    TEMP_OFFLINE_PATTERN = "Connection limit reached|Server error"
+    OFFLINE_PATTERN = r'File Not Found'
+    TEMP_OFFLINE_PATTERN = "Connection limit reached|Server error|You have reached the download limit"
 
     LINK_FREE_PATTERN = r'href="(http://.+?\.rfservers\.eu.+?)"'
 
@@ -41,14 +45,11 @@ class RockfileEu(SimpleHoster):
         self.resume_download = True
 
     def handle_free(self, pyfile):
-        url, inputs = self.parse_html_form("action=''")
+        url, inputs = self.parse_html_form(input_names={'op': re.compile(r'^download')})
 
-        if not inputs:
-            self.error("Free download form not found")
-
-        self.data = self.load(pyfile.url, post=inputs)
-
-        self.check_errors()
+        if inputs:
+            self.data = self.load(pyfile.url, post=inputs)
+            self.check_errors()
 
         url, inputs = self.parse_html_form('name="F1"')
         if not inputs:
@@ -87,3 +88,17 @@ class RockfileEu(SimpleHoster):
         m = re.search(self.LINK_FREE_PATTERN, self.data)
         if m is not None:
             self.link = m.group(1)
+
+        if self.link and pyfile.name == self.info['pattern']['ID'] + ".html":
+            pyfile.name = urllib.unquote(self.link.split('/')[-1])
+
+
+        try:
+            self.download(self.link)
+
+        except BadHeader, e:
+            if e.code == 503:
+                self.retry()
+
+            else:
+                raise
