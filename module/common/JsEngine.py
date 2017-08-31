@@ -104,7 +104,7 @@ class JsEngine():
         if ENGINE == 'pyv8':
             return self.eval_raw(script)
         else:
-            return self.eval_raw(PRINT_COMMANDS[self.engine] + "(eval(unescape('" + quote(script) + "')))")
+            return self.eval_raw(self.print_command() + "(eval(unescape('" + quote(script) + "')))")
 
     def eval_raw(self, script):
         if not self.init:
