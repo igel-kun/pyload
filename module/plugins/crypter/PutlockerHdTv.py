@@ -11,7 +11,7 @@ class PutlockerHdTv(SimpleCrypter):
     __version__ = "0.01"
     __status__  = "testing"
 
-    __pattern__ = r'https?://(?:www\.)?putlocker-hd\.tv'
+    __pattern__ = r'https?://(?:www\.)?(?:putlocker-hd\.tv|solarmovhd.com)'
 
     __description__ = """Putlocker-HD decrypter plugin"""
     __license__     = "GPLv3"
