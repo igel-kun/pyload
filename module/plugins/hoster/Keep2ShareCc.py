@@ -35,6 +35,21 @@ class Keep2ShareCc(SimpleHoster):
     API_URL = "https://keep2share.cc/api/v2/"
     #: See https://github.com/keep2share/api
 
+    # a problem with keep2share is that it sometimes forwards requests to other URLs (like k2s)
+    # for example:
+    # if we try to download a file from keep2s.cc but get forwarded to k2s.cc,
+    # then, the download request goes to k2s.cc but the captcha request goes to keep2s.cc
+    # this causes correctly solved captchas to be considered wrong :(
+    # to combat this, the following function follows all redirects and updates self.pyfile.url
+    def setup(self):
+        header = self.load(self.pyfile.url, just_header = True)
+        while 'location' in header:
+            self.log_debug('got redirected to %s' % str(header['location']))
+            self.pyfile.url = header['location']
+            header = self.load(self.pyfile.url, just_header = True)
+        super(Keep2ShareCc, self).setup()
+
+
     @classmethod
     def api_response(cls, method, **kwargs):
         html = get_url(cls.API_URL + method,
