@@ -23,7 +23,7 @@ class DepfileCom(SimpleHoster):
     ERROR_PATTERN = r"<p class=['\"](?:notice|error).*</p>"
     SIZE_PATTERN = r'<th>Size:</th>\n\s*<td>(?P<S>[^<]*)</td>'
     WAIT_PATTERN = 'no less than (.*?) should pass'
-    SEARCH_TYPE = {'NAME_PATTERN': re.MULTILINE, 'SIZE_PATTERN': re.MULTILINE}
+    SEARCH_FLAGS = {'NAME_PATTERN': re.MULTILINE, 'SIZE_PATTERN': re.MULTILINE}
 
 
     def handle_free(self, pyfile):
