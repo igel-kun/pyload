@@ -647,9 +647,8 @@ def parse_time(value):
             seconds += quant * {'hr': 3600, 'hour': 3600, 'min': 60, 'sec': 1, '': 1}[u.lower()]
 
     if seconds == 0:
-        return 3600
-    else:
-        return seconds
+        raise ValueError('cannot parse time from ' + str(value))
+    return seconds
 
 
 def timestamp():
@@ -806,7 +805,7 @@ def parse_html_tag_attr_value(attr_name, tag):
     m = re.search(
         r'%s\s*=\s*(["\']?)((?<=")[^"]+|(?<=\')[^\']+|[^>\s"\'][^>\s]*)\1' %
         attr_name, tag, re.I)
-    return m.group(2) if m else None
+    return m.group(2).strip() if m else None
 
 
 def parse_html_form(attr_str, html, input_names={}, url=""):
