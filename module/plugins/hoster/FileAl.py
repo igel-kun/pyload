@@ -9,7 +9,7 @@ class FileAl(XFSHoster):
     __version__ = "0.01"
     __status__  = "testing"
 
-    __pattern__ = r'http://(?:www\.)?file\.al/\w{12}'
+    __pattern__ = r'https?://(?:www\.)?file\.al/\w{12}'
 
     __description__ = """File.al hoster plugin"""
     __license__     = "GPLv3"
