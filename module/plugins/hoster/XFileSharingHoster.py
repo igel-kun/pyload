@@ -28,7 +28,7 @@ class XFileSharingHoster(XFSHoster):
 
     def _log(self, level, plugintype, pluginname, messages):
         messages = (self.PLUGIN_NAME,) + messages
-        return XFileSharingHoster._log(self, level, plugintype, pluginname, messages)
+        return XFSHoster._log(self, level, plugintype, pluginname, messages)
 
 
     def init(self):
@@ -50,14 +50,9 @@ class XFileSharingHoster(XFSHoster):
             part.capitalize() for part in re.split(
                 r'\.|\d+|-', self.PLUGIN_DOMAIN) if part != '.')
 
-    def setup(self):
-        self.chunk_limit = -1 if self.premium else 1
-        self.multiDL = True
-        self.resume_download = self.premium
-
     #@TODO: Recheck in 0.4.10
     def setup_base(self):
-        XFileSharingHoster.setup_base(self)
+        XFSHoster.setup_base(self)
 
         if self.account:
             self.req = self.pyload.requestFactory.getRequest(
@@ -67,10 +62,11 @@ class XFileSharingHoster(XFSHoster):
         else:
             self.req = self.pyload.requestFactory.getRequest(self.classname)
             self.premium = False
+            self.log_debug('no account, so no premium and no multiDL')
 
     #@TODO: Recheck in 0.4.10
     def load_account(self):
         class_name = self.classname
         self.__class__.__name__ = str(self.PLUGIN_NAME)
-        XFileSharingHoster.load_account(self)
+        XFSHoster.load_account(self)
         self.__class__.__name__ = class_name
