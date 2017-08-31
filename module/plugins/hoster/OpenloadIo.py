@@ -62,6 +62,8 @@ class OpenloadIo(SimpleHoster):
         while True:
             ticket_json = self._load_json(
                 self._DOWNLOAD_TICKET_URI_PATTERN % file_id)
+        
+            self.log_debug('json response: %s' % str(ticket_json))
 
             if ticket_json['status'] == 404:
                 self.offline(ticket_json['msg'])
@@ -72,47 +74,34 @@ class OpenloadIo(SimpleHoster):
             elif ticket_json['status'] != 200:
                 self.fail(ticket_json['msg'])
 
-            self.wait(ticket_json['result']['wait_time'])
+            else:
+                self.wait(ticket_json['result']['wait_time'])
 
-            # check if a captcha is required for this download
-            captchaResponse = ''
-            if 'captcha_url' in ticket_json['result'] and ticket_json[
-                    'result']['captcha_url'] != False:
-                self.log_debug(
-                    'This download requires a captcha solution: %s' %
-                    (ticket_json['result']['captcha_url']))
-                captchaResponse = self.captcha.decrypt(
-                    ticket_json['result']['captcha_url'])
+                # check if a captcha is required for this download
+                captcha_url = ticket_json['result'].get('captcha_url', None)
+                if captcha_url:
+                    self.log_debug(
+                        'This download requires a captcha solution: %s' %
+                        (ticket_json['result']['captcha_url']))
 
-        self.log_debug('json response: %s' % str(ticket_json))
+                    file_type = os.path.splitext(captcha_url)[1]
+                    
+                    # solve the captcha (try using OCR first - why is this not standard, btw?)
+                    captcha_result = self.captcha.decrypt_image(img = captcha_url, input_type = file_type, ocr = True)
 
-        if ticket_json['status'] == 404:
-            self.offline(ticket_json['msg'])
-        else:
-            self.wait(ticket_json['result']['wait_time'])
-            ticket = ticket_json['result']['ticket']
-            captcha_url = ticket_json['result']['captcha_url']
-            file_type = os.path.splitext(captcha_url)[1]
-            
-            # solve the captcha (try using OCR first - why is this not standard, btw?)
-            captcha_result = self.captcha.decrypt_image(img = captcha_url, input_type = file_type, ocr = True)
+                    download_json = self._load_json(
+                        self._DOWNLOAD_FILE_URI_PATTERN %
+                        (file_id, ticket_json['result']['ticket'], captcha_result))
 
-            download_json = self._load_json(
-                self._DOWNLOAD_FILE_URI_PATTERN %
-                (file_id, ticket, captchaResponse))
+                    # check download link request result status
+                    if download_json['status'] == 200:
+                        # start downloading
+                        break
+                    elif download_json['status'] == 403:
+                        # wrong captcha, get new captcha and try again
+                        self.log_debug('Captcha solution is incorrect')
+                        continue
 
-            # check download link request result status
-            if download_json['status'] == 403:
-                # wrong captcha, get new captcha and try again
-                self.log_debug('Captcha solution is incorrect')
-                continue
-
-            if download_json['status'] == 200:
-                # start downloading
-                break
-
-            # no status 403 or 200 means getting the download url failed, abort
-            self.fail(download_json['msg'])
 
         self.link = download_json['result']['url']
 
