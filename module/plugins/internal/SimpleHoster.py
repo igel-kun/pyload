@@ -117,6 +117,8 @@ class SimpleHoster(Hoster):
     HASHSUM_PATTERN      = r'[^\w](?P<H>(CRC|crc)(-?32)?|(MD|md)-?5|(SHA|sha)-?(1|224|256|384|512)).*(:|=|>)[ ]*(?P<D>(?:[a-z0-9]|[A-Z0-9]){8,})'
     OFFLINE_PATTERN      = r'[^\w](404\s|[Ii]nvalid|[Oo]ffline|[Dd]eleted|[Rr]emoved|([Nn]o(t|thing)?|sn\'t) (found|(longer )?(available|exist)))'
     TEMP_OFFLINE_PATTERN = r'[^\w](503\s|[Mm]aint(e|ai)nance|[Tt]emp([.-]|orarily)|[Mm]irror)'
+    # set SEARCH_TYE['NAME_PATTERN'] = re.MULTILINE | re.DOTALL for example, to change search behavior
+    SEARCH_TYPE          = None
 
     WAIT_PATTERN = None
     PREMIUM_ONLY_PATTERN = None
@@ -167,14 +169,16 @@ class SimpleHoster(Hoster):
                 info['status'] = 6
 
             else:
-                for pattern in ("INFO_PATTERN", "NAME_PATTERN",
-                                "SIZE_PATTERN", "HASHSUM_PATTERN"):
+                for pattern in ("INFO_PATTERN", "NAME_PATTERN", "SIZE_PATTERN", "HASHSUM_PATTERN"):
                     try:
                         attr = getattr(cls, pattern)
-                        pdict = re.search(attr, html).groupdict()
+                        try:
+                            search_flags = getattr(cls, 'SEARCH_TYPE').get(pattern, 0)
+                        except Exception:
+                            search_flags = 0
 
-                        if all(True for k in pdict if k not in info[
-                               'pattern']):
+                        pdict = re.search(attr, html, search_flags).groupdict()
+                        if all(True for k in pdict if k not in info['pattern']):
                             info['pattern'].update(pdict)
 
                     except Exception:
@@ -245,8 +249,7 @@ class SimpleHoster(Hoster):
             self.direct_dl = self.DIRECT_LINK
 
         if not self.leech_dl:
-            self.pyfile.url = replace_patterns(
-                self.pyfile.url, self.URL_REPLACEMENTS)
+            self.pyfile.url = replace_patterns(self.pyfile.url, self.URL_REPLACEMENTS)
 
     def _preload(self):
         if self.data:
@@ -258,7 +261,6 @@ class SimpleHoster(Hoster):
                               decode=self.TEXT_ENCODING)
 
     def process(self, pyfile):
-        self.log_debug('starting process...')
         self._prepare()
 
         #@TODO: Remove `handle_multi`, use MultiHoster instead
@@ -333,7 +335,7 @@ class SimpleHoster(Hoster):
 
         self.log_info(_("No errors found"))
 
-    def check_errors(self):
+    def check_errors(self, do_wait = True):
         self.log_info(_("Checking for link errors..."))
 
         if not self.data:
@@ -353,23 +355,24 @@ class SimpleHoster(Hoster):
             elif self.SIZE_LIMIT_PATTERN and re.search(self.SIZE_LIMIT_PATTERN, self.data):
                 self.fail(_("File too large for free download"))
 
-            elif self.DL_LIMIT_PATTERN and re.search(self.DL_LIMIT_PATTERN, self.data):
+            elif self.DL_LIMIT_PATTERN:
                 m = re.search(self.DL_LIMIT_PATTERN, self.data)
-                try:
-                    errmsg = m.group(1)
+                if m is not None:
+                    try:
+                        errmsg = m.group(1)
 
-                except (AttributeError, IndexError):
-                    errmsg = m.group(0)
+                    except (AttributeError, IndexError):
+                        errmsg = m.group(0)
 
-                finally:
-                    errmsg = re.sub(r'<.*?>', " ", errmsg.strip())
+                    finally:
+                        errmsg = re.sub(r'<.*?>', " ", errmsg.strip())
 
-                self.info['error'] = errmsg
-                self.log_warning(errmsg)
-                wait_time = parse_time(errmsg)
+                    self.info['error'] = errmsg
+                    self.log_warning('DL LIMIT: ' + errmsg)
+                    wait_time = parse_time(errmsg)
 
-                self.wait(wait_time, reconnect=wait_time > self.config.get('max_wait', 10) * 60)
-                self.restart(_("Download limit exceeded"))
+                    self.wait(wait_time)
+                    self.restart(_("Download limit exceeded"))
 
         if self.HAPPY_HOUR_PATTERN and re.search(
                 self.HAPPY_HOUR_PATTERN, self.data):
@@ -388,7 +391,8 @@ class SimpleHoster(Hoster):
                     errmsg = re.sub(r'<.*?>', " ", errmsg)
 
                 self.info['error'] = errmsg
-                self.log_warning(errmsg)
+                self.log_debug('ERROR_PATTERN matched: ' + self.ERROR_PATTERN)
+                self.log_warning('ERROR: ' + errmsg)
 
                 if re.search(self.TEMP_OFFLINE_PATTERN, errmsg):
                     self.temp_offline()
@@ -396,18 +400,17 @@ class SimpleHoster(Hoster):
                 elif re.search(self.OFFLINE_PATTERN, errmsg):
                     self.offline()
                 
-                elif re.search('limit|wait|slot|exceed|same time|hour', errmsg, re.I):
+                elif re.search('limit|wait|slot|exceed|same time|hour|(?:is|are) downloading', errmsg, re.I):
                     wait_time = parse_time(errmsg)
-                    self.wait(
-                        wait_time, reconnect=wait_time > self.config.get(
-                            'max_wait', 10) * 60)
+                    self.wait(wait_time)
                     self.restart(_("Download limit exceeded"))
 
                 elif re.search(r'country|ip|region|nation', errmsg, re.I):
                     self.fail(
-                        _("Connection from your current IP address is not allowed"))
+                      _("Connection from your current IP address is not allowed: " + errmsg))
 
                 elif re.search(r'captcha|code', errmsg, re.I):
+                    self.log_warning('retrying captcha, since we found ' + errmsg)
                     self.retry_captcha()
 
                 elif re.search(r'countdown|expired', errmsg, re.I):
@@ -436,17 +439,22 @@ class SimpleHoster(Hoster):
         if self.WAIT_PATTERN:
             m = re.search(self.WAIT_PATTERN, self.data)
             if m is not None:
-                self.log_debug("oh, we'll have to wait, how disappointing...")
-                try:
-                    waitmsg = m.group(1).strip()
-
-                except (AttributeError, IndexError):
-                    waitmsg = m.group(0).strip()
-                
-                self.log_debug("Wait message is %s." % waitmsg)
-                wait_time = parse_time(waitmsg)
-                self.log_debug("waiting " + str(wait_time) + " seconds")
-                self.wait(wait_time, reconnect=wait_time > self.config.get('max_wait', 10) * 60)
+                waits = m.groups()
+                if waits is None:
+                    waits = [m.group(0)]
+                for waitmsg in waits:
+                    if waitmsg:
+                        self.log_debug("Wait message is: %s" % str(waitmsg))
+                        try:
+                            wait_time = parse_time(waitmsg)
+                            waitmsg = re.sub(r'<.*?>', " ", str(waitmsg).strip())
+                            self.set_wait(wait_time)
+                            if do_wait:
+                                self.wait()
+                            # first parseable waitmsg is used to wait
+                            break
+                        except ValueError:
+                            pass
 
         self.log_info(_("No errors found"))
         self.info.pop('error', None)
