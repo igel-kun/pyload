@@ -8,8 +8,8 @@ class XFileSharingLite(XFileSharingHoster):
     __pattern__ = r"http://(?:\w*\.)*(?P<DOMAIN>vodlocker\.com|vodlockers\.tk|played\.to|faststream\.in)/\w{12}"
     __version__ = "0.01"
     __description__ = """XFileSharingLite plugin"""
-    __author_name__ = ("igel")
-    __author_mail__ = ("")
+    __license__ = "GPLv3"
+    __authors__ = [("igel", None)]
 
     WAIT_TIME = r'countdown[^0-9]*(\d+)'
     # if called without DOTALL, we need this:

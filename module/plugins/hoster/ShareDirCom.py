@@ -20,15 +20,21 @@ class ShareDirCom(SimpleHoster):
 #    NAME_PATTERN = r''
 #    SIZE_PATTERN = r''
 
-    OFFLINE_PATTERN      = r'File not found|Sorry, this file is no longer available'
+    ERROR_PATTERN      = r'File not found|Sorry, this file is no longer available'
     PREMIUM_ONLY_PATTERN = r'<div class="error".*?only .*Premium users'
 
     def process(self, pyfile):
         self._prepare()
         
         header = self.load(pyfile.url, just_header=True)
-        size = int(header.get('content-length'))
         self.log_debug("got header: " + str(header))
+        if header['content-type'] == 'text/html':
+            self.data = self.load(pyfile.url)
+            self.check_errors()
+            # if we've got some html page, but it didn't contain an error message, then something weird happened
+            self.fail('got an HTML response but no error: ' + str(self.data))
+        else:
+            size = int(header['content-length'])
 
         # first, check whether we have a chance of completing the download
         if size > self.account.get_data('maxtraffic'):
