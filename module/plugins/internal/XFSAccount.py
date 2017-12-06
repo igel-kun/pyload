@@ -15,6 +15,7 @@ class XFSAccount(Account):
     __status__ = "stable"
 
     __config__ = [("activated", "bool", "Activated", True),
+                  ("SSL", "bool", "use SSL (encryption) for sending login", False),
                   ("multi", "bool", "Multi-hoster", True),
                   ("multi_mode", "all;listed;unlisted", "Hosters to use", "all"),
                   ("multi_list", "str", "Hoster list (comma separated)", ""),
@@ -45,6 +46,9 @@ class XFSAccount(Account):
     LOGIN_BAN_PATTERN = r'>(Your IP.+?)<a'
     LOGIN_SKIP_PATTERN = r'op=logout'
 
+    def http(self):
+        return "http" + ('s' if self.config.get('SSL', False) else '') + "://"
+
     def _set_xfs_cookie(self):
         cookie = (self.PLUGIN_DOMAIN, "lang", "english")
         if isinstance(self.COOKIES, list) and cookie not in self.COOKIES:
@@ -57,7 +61,7 @@ class XFSAccount(Account):
             self.fail_login(_("Missing PLUGIN DOMAIN"))
 
         if not self.PLUGIN_URL:
-            self.PLUGIN_URL = "http://www.%s/" % self.PLUGIN_DOMAIN
+            self.PLUGIN_URL = self.http() + "www.%s/" % self.PLUGIN_DOMAIN
 
         if not self.LOGIN_URL:
             self.LOGIN_URL = urlparse.urljoin(self.PLUGIN_URL, "login.html")
@@ -185,11 +189,11 @@ class XFSAccount(Account):
                        'password': password})
 
         if action:
-            url = urlparse.urljoin("http://", action)
+            url = urlparse.urljoin(self.http(), action)
         else:
             url = self.LOGIN_URL
 
-        self.data = self.load(url, post=inputs, cookies=self.COOKIES)
+        self.data = self.load(url, post=inputs, cookies=self.COOKIES, redir_post=False)
 
         self.check_errors()
 
