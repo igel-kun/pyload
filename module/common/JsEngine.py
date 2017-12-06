@@ -21,6 +21,7 @@ from imp import find_module
 from os.path import join, exists
 from urllib import quote
 import subprocess
+import os
 
 ENGINE = ""
 
@@ -35,8 +36,10 @@ PRINT_COMMANDS = {'js':'print',
         'rhino':'print',
         'node js':'console.log'}
 
-def call_external(command):
-    out, err = subprocess.Popen(command, bufsize=-1, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+def call_external(command, extra_env = {}):
+    my_env = os.environ.copy()
+    my_env.update(extra_env)
+    out, err = subprocess.Popen(command, bufsize=-1, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=my_env).communicate()
     return out.strip()
 
 def compute_42(command, print_cmd):
@@ -95,20 +98,20 @@ class JsEngine():
         self.init = False
 
     def __nonzero__(self):
-        return False if not ENGINE else True
+        return False if not self.engine else True
 
     def print_command(self):
         return PRINT_COMMANDS[self.engine]
 
     def eval(self, script):
-        if ENGINE == 'pyv8':
+        if self.engine == 'pyv8':
             return self.eval_raw(script)
         else:
             return self.eval_raw(self.print_command() + "(eval(unescape('" + quote(script) + "')))")
 
     def eval_raw(self, script):
         if not self.init:
-            if ENGINE == "pyv8" or (DEBUG and PYV8):
+            if self.engine == "pyv8" or (DEBUG and PYV8):
                 import PyV8
                 global PyV8
 
@@ -117,17 +120,17 @@ class JsEngine():
         if type(script) == unicode:
             script = script.encode("utf8")
 
-        if not ENGINE:
+        if not self.engine:
             raise Exception("No JS Engine")
 
         if not DEBUG:
-            if ENGINE == "pyv8":
+            if self.engine == "pyv8":
                 return self.eval_pyv8(script)
-            elif ENGINE == "js":
+            elif self.engine == "js":
                 return self.eval_js(script)
-            elif ENGINE == "node js":
+            elif self.engine == "node js":
                 return self.eval_node_js(script)
-            elif ENGINE == "rhino":
+            elif self.engine == "rhino":
                 return self.eval_rhino(script)
         else:
             results = []
