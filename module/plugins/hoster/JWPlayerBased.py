@@ -2,7 +2,10 @@
 
 import re
 
-from module.plugins.internal.misc import eval_js_script, get_domain
+from module.network.CookieJar import CookieJar
+from module.network.PhantomRequest import PhantomRequest
+
+from module.plugins.internal.misc import eval_js_script, get_domain, make_oneline
 from module.plugins.internal.XFSHoster import XFSHoster
 
 
@@ -33,6 +36,15 @@ class JWPlayerBased(XFSHoster):
         self.chunkLimit = 1
         self.resumeDownload = True
 
+        # use phantomJS to download websites; this will circumvent JS obfuscation but makes everything a bit slower
+        try:
+            self.req.http.close()
+        finally:
+            self.req.http = PhantomRequest(
+                cookies = CookieJar(None),
+                options = self.pyload.requestFactory.getOptions())
+
+
     def init(self):
         self.__pattern__ = self.pyload.pluginManager.hosterPlugins[self.classname]['pattern']
 
@@ -58,12 +70,18 @@ class JWPlayerBased(XFSHoster):
         self.log_debug('our error pattern is: %s' % self.ERROR_PATTERN)
 
 
-
-
     def handle_free(self, pyfile):
+
         self.log_debug('calling XFSs handle_free to click buttons...')
         super(JWPlayerBased, self).handle_free(pyfile)
-        self.log_debug('XFSs handle_free found: %s' % str(self.link))
+        self.log_debug('XFSs handle_free found: %s' % make_oneline(self.link))
+
+        # step 2: extract file URL
+        m = re.search(self.JW_LINK_PATTERN, self.link, re.MULTILINE | re.DOTALL)
+        if m is not None:
+            for link_match in m.groups():
+                if link_match:
+                    self.link = link_match
 
         if 'eval' in self.link:
             self.log_debug(_("evaluating script to get call to jwplayer"))

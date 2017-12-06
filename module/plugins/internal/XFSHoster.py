@@ -6,14 +6,14 @@ import re
 
 from ..captcha.ReCaptcha import ReCaptcha
 from ..captcha.SolveMedia import SolveMedia
-from .misc import html_unescape, parse_time, seconds_to_midnight, set_cookie
+from .misc import html_unescape, parse_time, seconds_to_midnight, set_cookie, make_oneline
 from .SimpleHoster import SimpleHoster
 
 
 class XFSHoster(SimpleHoster):
     __name__ = "XFSHoster"
     __type__ = "hoster"
-    __version__ = "0.80"
+    __version__ = "0.81"
     __status__ = "stable"
 
     __pattern__ = r'^unmatchable$'
@@ -39,7 +39,7 @@ class XFSHoster(SimpleHoster):
     NAME_PATTERN = r'(Filename[ ]*:[ ]*</b>(</td><td nowrap>)?|name="fname"[ ]+value="|<[\w^_]+ class="(file)?name">)\s*(?P<N>.+?)(\s*<|")'
     SIZE_PATTERN = r'(Size[ ]*:[ ]*</b>(</td><td>)?|File:.*>|</font>\s*\(|<[\w^_]+ class="size">)\s*(?P<S>[\d.,]+)\s*(?P<U>[\w^_]+)'
 
-    OFFLINE_PATTERN = r'>\s*\w+ (Not Found|file (was|has been) removed|no longer available)'
+    OFFLINE_PATTERN = r'>\s*\w+ (Not Found|file (?:was|has been) (?:removed|deleted)|no longer available)'
     TEMP_OFFLINE_PATTERN = r'>\s*\w+ server (is in )?(maintenance|maintainance)'
 
     OFFLINE_PATTERN       = r'(Not Found|file (?:was|has been)?\s*(?:removed|deleted)|no longer available|copyright (?:viola|infr|claim)|did\s*n.t comply(?:\s*\w+)* Terms of Use|File does not exist|file could not be found)'
@@ -100,19 +100,20 @@ class XFSHoster(SimpleHoster):
             self.log_debug("using pattern %s" % str(self.LINK_PATTERN))
 
             # we'll do our own waiting because we can do the captcha in the meantime
-            self.check_errors(do_wait=False)
+            try:
+                self.check_errors(do_wait=False)
+            except ValueError, e:
+                # if parse_time failed to parse the time, wait a default of 1h
+                self.retry(wait = 3600)
 
-            m = re.search(self.LINK_PATTERN, self.data, re.S)
-            if m is not None:
-                self.log_debug('found link: %s' % self.link)
-            else:
+            m = re.search(self.LINK_PATTERN, self.data, re.DOTALL)
+            if m is None:
                 m = re.search(self.LINK_PATTERN, self.data, re.MULTILINE | re.DOTALL)
-                if m is not None:
-                    self.log_debug('found link with MULTILINE: %s' % self.link)
             if m is not None:
                 for link_match in m.groups():
                     if link_match:
                         self.link = link_match
+                self.log_debug('found link: %s' % make_oneline(self.link))
                 break
 
             # solve the captcha
@@ -133,7 +134,7 @@ class XFSHoster(SimpleHoster):
         else:
             self.error(_("Too many OPs"))
 
-        self.log_debug('using link: %s' % self.link)
+        self.log_debug('using link: %s' % make_oneline(self.link))
 
     def handle_premium(self, pyfile):
         return self.handle_free(pyfile)

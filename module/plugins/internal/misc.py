@@ -995,6 +995,8 @@ def move_tree(src, dst, overwrite=False):
         except OSError:
             pass
 
+def make_oneline(link):
+    return re.sub('\n.*', r'..', link.strip(), re.MULTILINE | re.DOTALL)
 
 # TODO: use pyexecjs?
 def eval_js_script(script):
