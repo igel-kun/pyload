@@ -29,7 +29,7 @@ class DatafileCom(SimpleHoster):
 
     OFFLINE_PATTERN = r'Invalid Link|Link Expired|This file was deleted'
     TEMP_OFFLINE_PATTERN = r'You are downloading another file at this moment'
-    PREMIUM_ONLY_PATTERN = r'This file is only available for premium users'
+    PREMIUM_ONLY_PATTERN = r'only available for premium users'
 
     DIRECT_LINK = False
     DISPOSITION = False

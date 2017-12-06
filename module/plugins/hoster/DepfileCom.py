@@ -13,7 +13,7 @@ class DepfileCom(SimpleHoster):
     __version__ = "0.01"
     __status__  = "testing"
 
-    __pattern__ = r'(?:https?://)?(?:www\.)*depfile\.com/'
+    __pattern__ = r'(?:https?://)?(?:www\.)*depfile\.(?:com|us)/'
     __description__ = """depfile.com plugin"""
     __license__     = "GPLv3"
     __authors__ = [("igel", "")]
@@ -22,23 +22,24 @@ class DepfileCom(SimpleHoster):
     NAME_PATTERN = r'<th>File name:</th>\n\s*<td>(?P<N>[^<]*)</td>'
     ERROR_PATTERN = r"<p class=['\"](?:notice|error).*</p>"
     SIZE_PATTERN = r'<th>Size:</th>\n\s*<td>(?P<S>[^<]*)</td>'
-    WAIT_PATTERN = 'no less than (.*?) should pass'
+    WAIT_PATTERN = '(?:no less than .*? should pass|users can download .* per day)'
     SEARCH_FLAGS = {'NAME_PATTERN': re.MULTILINE, 'SIZE_PATTERN': re.MULTILINE}
 
 
     def handle_free(self, pyfile):
+        self.check_errors()
         for i in xrange(1,5):
             vvcid = re.search(r"name='vvcid' value='([^']*)'", self.data).group(1)
             # they have a spelling error in their html...
             captcha_img = re.search(r"class='vvc_i[ma]*ge'.*?src='([^']*)'", self.data).group(1)
-            # fix relative URL
             captcha_response = self.captcha.decrypt(urlparse.urljoin(pyfile.url, captcha_img), ocr="VerticalShift")
-
             self.data = self.load(pyfile.url, post={'vvcid': vvcid, 'verifycode': captcha_response, 'FREE':'Low Speed Download'})
 
+            self.check_errors()
             #self.log_debug(self.data)
             if re.search('Wrong CAPTCHA', self.data):
                 self.captcha.invalid()
+                self.log_info(_('captcha was wrong'))
                 continue
             elif re.search('Download limit for free user', self.data):
                 self.retry(wait = 2*60*60)

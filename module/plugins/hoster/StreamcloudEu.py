@@ -23,6 +23,7 @@ class StreamcloudEu(XFSHoster):
     __authors__ = [("seoester", "seoester@googlemail.com")]
 
     PLUGIN_DOMAIN = "streamcloud.eu"
+    ERROR_PATTERN = r'(?:class=["\']err["\'].*?>|<[Cc]enter><b>|>Error</td>|>\(ERROR:)(?:\s*<.+?>\s*)*(.+?)(?:["\']|<|\))'
 
     WAIT_PATTERN = r'var count = (\d+)'
 

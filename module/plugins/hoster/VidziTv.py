@@ -14,7 +14,7 @@ class VidziTv(JWPlayerBased):
     __author_name__ = ("igel")
     __author_mail__ = ("")
 
-    #JW_PATTERN = r"<script .*?javascript'>(eval.*?)(?:</script>|$)"
-    JW_LINK_PATTERN = r"{file:[\"']([^\"']*)[\"']}"
+    JW_PATTERN = r'<script .*?jwplayer.*?setup\({(.*?)</script>'
+    JW_LINK_PATTERN = r"{ *file *: *[\"']([^\"']*)[\"']}\]"
 
 
