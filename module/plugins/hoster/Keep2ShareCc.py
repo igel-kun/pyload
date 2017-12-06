@@ -12,7 +12,7 @@ from ..internal.misc import json
 class Keep2ShareCc(SimpleHoster):
     __name__ = "Keep2ShareCc"
     __type__ = "hoster"
-    __version__ = "0.41"
+    __version__ = "0.43"
     __status__ = "testing"
 
     __pattern__ = r'https?://(?:www\.)?(keep2share|k2s|keep2s)\.cc/file/(?P<ID>\w+)'
@@ -30,8 +30,8 @@ class Keep2ShareCc(SimpleHoster):
 
     DISPOSITION = False  # @TODO: Recheck in v0.4.10
 
-    URL_REPLACEMENTS = [(__pattern__ + ".*", "https://keep2s.cc/file/\g<ID>")]
     WAIT_PATTERN         = r'Please wait ([\d:]+) to download this file'
+    URL_REPLACEMENTS = [(__pattern__ + ".*", "https://k2s.cc/file/\g<ID>")]
 
     API_URL = "https://keep2share.cc/api/v2/"
     #: See https://github.com/keep2share/api
@@ -139,7 +139,7 @@ class Keep2ShareCc(SimpleHoster):
                         break
 
                 else:
-                    self.fail(_("Recaptcha max retries exceeded"))
+                    self.fail(_("Max captcha retries reached"))
 
                 self.wait(json_data['time_wait'])
 
