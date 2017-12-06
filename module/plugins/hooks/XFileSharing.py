@@ -34,7 +34,7 @@ class XFileSharing(Addon):
         "fileparadox.in", "filevice.com", "hostingbulk.com", "junkyvideo.com",
         "ravishare.com", "salefiles.com", "sendmyway.com", "sharebeast.com",
         "sharesix.com", "verzend.be", "worldbytez.com",
-        "xvidstage.com", "filespace.com",
+        "xvidstage.com", "filespace.com", "movdivx.com",
         # NOT TESTED:
         "101shared.com", "4upfiles.com", "filemaze.ws", "filenuke.com",
         "linkzhost.com", "mightyupload.com", "rockdizfile.com", "sharerepo.com",
