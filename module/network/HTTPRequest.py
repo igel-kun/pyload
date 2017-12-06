@@ -79,6 +79,7 @@ class HTTPRequest():
         if hasattr(pycurl, "AUTOREFERER"):
             self.c.setopt(pycurl.AUTOREFERER, 1)
         self.c.setopt(pycurl.SSL_VERIFYPEER, 0)
+        self.c.setopt(pycurl.SSL_VERIFYHOST, 0)
         self.c.setopt(pycurl.LOW_SPEED_TIME, 30)
         self.c.setopt(pycurl.LOW_SPEED_LIMIT, 5)
 
@@ -202,7 +203,21 @@ class HTTPRequest():
             self.c.setopt(pycurl.NOBODY, 0)
 
         else:
-            self.c.perform()
+            try:
+                self.c.perform()
+            except pycurl.error, e:
+                if e.args[0] == pycurl.E_SSL_CONNECT_ERROR:
+                    self.c.setopt(pycurl.SSLVERSION, 3)
+                    try:
+                        self.c.perform()
+                    except pycurl.error, e:
+                        if e.args[0] == E_SSL_CONNECT_ERROR:
+                            self.c.setopt(pycurl.SSLVERSION, 2)
+                            self.c.perform()
+                        else:
+                            raise
+                else:
+                    raise
             rep = self.getResponse()
 
         self.c.setopt(pycurl.POSTFIELDS, "")
