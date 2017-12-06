@@ -14,3 +14,4 @@ class StreamcloudEu(XFSAccount):
     __authors__ = [("Walter Purcaro", "vuolter@gmail.com")]
 
     PLUGIN_DOMAIN = "streamcloud.eu"
+    LOGIN_URL = "http://streamcloud.eu/login.html"
