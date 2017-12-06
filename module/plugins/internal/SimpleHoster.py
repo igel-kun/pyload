@@ -117,8 +117,8 @@ class SimpleHoster(Hoster):
     HASHSUM_PATTERN      = r'[^\w](?P<H>(CRC|crc)(-?32)?|(MD|md)-?5|(SHA|sha)-?(1|224|256|384|512)).*(:|=|>)[ ]*(?P<D>(?:[a-z0-9]|[A-Z0-9]){8,})'
     OFFLINE_PATTERN      = r'[^\w](404\s|[Ii]nvalid|[Oo]ffline|[Dd]eleted|[Rr]emoved|([Nn]o(t|thing)?|sn\'t) (found|(longer )?(available|exist)))'
     TEMP_OFFLINE_PATTERN = r'[^\w](503\s|[Mm]aint(e|ai)nance|[Tt]emp([.-]|orarily)|[Mm]irror)'
-    # set SEARCH_TYE['NAME_PATTERN'] = re.MULTILINE | re.DOTALL for example, to change search behavior
-    SEARCH_FLAGS          = None
+    # set SEARCH_FLAGS['NAME_PATTERN'] = re.MULTILINE | re.DOTALL for example, to change search behavior
+    SEARCH_FLAGS          = {}
 
     WAIT_PATTERN = None
     PREMIUM_ONLY_PATTERN = None
@@ -160,11 +160,11 @@ class SimpleHoster(Hoster):
                     pass
 
         if html:
-            if cls.OFFLINE_PATTERN and re.search(cls.OFFLINE_PATTERN, html, re.IGNORECASE) is not None:
+            if cls.OFFLINE_PATTERN and re.search(cls.OFFLINE_PATTERN, html, cls.SEARCH_FLAGS.get('OFFLINE_PATTERN',0)) is not None:
                 info['error'] = 'offline pattern matched: ' + cls.OFFLINE_PATTERN
                 info['status'] = 1
 
-            elif cls.TEMP_OFFLINE_PATTERN and re.search(cls.TEMP_OFFLINE_PATTERN, html, re.IGNORECASE) is not None:
+            elif cls.TEMP_OFFLINE_PATTERN and re.search(cls.TEMP_OFFLINE_PATTERN, html, cls.SEARCH_FLAGS.get('TEMP_OFFLINE_PATTERN',0)) is not None:
                 info['error'] = 'temp-offline pattern matched'
                 info['status'] = 6
 
@@ -342,21 +342,19 @@ class SimpleHoster(Hoster):
             self.log_warning(_("No data to check"))
             return
 
-        if self.IP_BLOCKED_PATTERN and re.search(
-                self.IP_BLOCKED_PATTERN, self.data):
+        if self.IP_BLOCKED_PATTERN and re.search(self.IP_BLOCKED_PATTERN, self.data, self.SEARCH_FLAGS.get('IP_BLOCKED_PATTERN',0)):
             self.fail(
                 _("Connection from your current IP address is not allowed"))
 
         elif not self.premium:
-            if self.PREMIUM_ONLY_PATTERN and re.search(
-                    self.PREMIUM_ONLY_PATTERN, self.data):
+            if self.PREMIUM_ONLY_PATTERN and re.search(self.PREMIUM_ONLY_PATTERN, self.data, self.SEARCH_FLAGS.get('PREMIUM_ONLY_PATTERN',0)):
                 self.fail(_("File can be downloaded by premium users only"))
 
-            elif self.SIZE_LIMIT_PATTERN and re.search(self.SIZE_LIMIT_PATTERN, self.data):
+            elif self.SIZE_LIMIT_PATTERN and re.search(self.SIZE_LIMIT_PATTERN, self.data, self.SEARCH_FLAGS.get('SIZE_LIMIT_PATTERN',0)):
                 self.fail(_("File too large for free download"))
 
             elif self.DL_LIMIT_PATTERN:
-                m = re.search(self.DL_LIMIT_PATTERN, self.data)
+                m = re.search(self.DL_LIMIT_PATTERN, self.data, self.SEARCH_FLAGS.get('DL_LIMIT_PATTERN',0))
                 if m is not None:
                     try:
                         errmsg = m.group(1)
@@ -374,12 +372,11 @@ class SimpleHoster(Hoster):
                     self.wait(wait_time)
                     self.restart(_("Download limit exceeded"))
 
-        if self.HAPPY_HOUR_PATTERN and re.search(
-                self.HAPPY_HOUR_PATTERN, self.data):
+        if self.HAPPY_HOUR_PATTERN and re.search(self.HAPPY_HOUR_PATTERN, self.data, self.SEARCH_FLAGS.get('HAPPY_HOUR_PATTERN',0)):
             self.multiDL = True
 
         if self.ERROR_PATTERN:
-            m = re.search(self.ERROR_PATTERN, self.data)
+            m = re.search(self.ERROR_PATTERN, self.data, self.SEARCH_FLAGS.get('ERROR_PATTERN',0))
             if m is not None:
                 try:
                     errmsg = m.group(1).strip()
@@ -394,13 +391,13 @@ class SimpleHoster(Hoster):
                 self.log_debug('ERROR_PATTERN matched: ' + self.ERROR_PATTERN)
                 self.log_warning('ERROR: ' + errmsg)
 
-                if re.search(self.TEMP_OFFLINE_PATTERN, errmsg):
+                if re.search(self.TEMP_OFFLINE_PATTERN, errmsg, self.SEARCH_FLAGS.get('TEMP_OFFLINE_PATTERN',0)):
                     self.temp_offline()
 
-                elif re.search(self.OFFLINE_PATTERN, errmsg):
+                elif re.search(self.OFFLINE_PATTERN, errmsg, self.SEARCH_FLAGS.get('OFFLINE_PATTERN',0)):
                     self.offline()
                 
-                elif re.search('limit|wait|slot|exceed|same time|hour|(?:is|are) downloading', errmsg, re.I):
+                elif re.search('limit|wait|slot|exceed|same time|per day|hour|(?:is|are|recently) download(?:ing|ed)', errmsg, re.I):
                     wait_time = parse_time(errmsg)
                     self.wait(wait_time)
                     self.restart(_("Download limit exceeded"))
@@ -437,7 +434,7 @@ class SimpleHoster(Hoster):
                     self.restart(errmsg)
 
         if self.WAIT_PATTERN:
-            m = re.search(self.WAIT_PATTERN, self.data)
+            m = re.search(self.WAIT_PATTERN, self.data, self.SEARCH_FLAGS.get('WAIT_PATTERN',0))
             if m is not None:
                 waits = m.groups()
                 if waits is None:
@@ -475,7 +472,7 @@ class SimpleHoster(Hoster):
         if not self.LINK_FREE_PATTERN:
             self.fail(_("Free download not implemented"))
 
-        m = re.search(self.LINK_FREE_PATTERN, self.data)
+        m = re.search(self.LINK_FREE_PATTERN, self.data, self.SEARCH_FLAGS.get('LINK_FREE_PATTERN',0))
         if m is None:
             self.error(_("Free download link not found"))
         else:
@@ -486,7 +483,7 @@ class SimpleHoster(Hoster):
             self.log_warning(_("Premium download not implemented"))
             self.restart(premium=False)
 
-        m = re.search(self.LINK_PREMIUM_PATTERN, self.data)
+        m = re.search(self.LINK_PREMIUM_PATTERN, self.data, self.SEARCH_FLAGS.get('LINK_PREMIUM_PATTERN',0))
         if m is None:
             self.error(_("Premium download link not found"))
         else:
