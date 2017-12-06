@@ -50,6 +50,7 @@ class Checksum(Addon):
                   ("check_action", "fail;retry;nothing",
                    "What to do if check fails?", "retry"),
                   ("max_tries", "int", "Number of retries", 2),
+                  ("plugin_blacklist", "str", "List of plugins on which not to run (space separated)", ''),
                   ("retry_action", "fail;nothing",
                    "What to do if all retries fail?", "fail"),
                   ("wait_time", "int", "Time to wait before each retry (seconds)", 1)]
@@ -88,6 +89,14 @@ class Checksum(Addon):
         a) if known, the exact filesize in bytes (e.g. 'size': 123456789)
         b) hexadecimal hash string with algorithm name as key (e.g. 'md5': "d76505d0869f9f928a17d42d66326307")
         """
+
+        
+        #self.log_debug('checking if ' + pyfile.plugin.__name__ + ' is blacklisted: ' + self.config.get('plugin_blacklist', '') + '...')
+        if pyfile.plugin.__name__ in self.config.get('plugin_blacklist', ''):
+            return
+
+        self.log_debug('checking checksum on finished package...')
+
         if hasattr(pyfile.plugin, "check_data") and isinstance(
                 pyfile.plugin.check_data, dict):
             data = pyfile.plugin.check_data.copy()
