@@ -43,7 +43,7 @@ except ImportError:
 class misc(object):
     __name__ = "misc"
     __type__ = "plugin"
-    __version__ = "0.47"
+    __version__ = "0.50"
     __status__ = "stable"
 
     __pattern__ = r'^unmatchable$'
@@ -186,7 +186,8 @@ class Periodical(object):
         except Exception, e:
             self.plugin.log_error(_("Error performing periodical task"), e)
 
-        self.restart(threaded=threaded, delay=self.interval)
+        if not self.stopped:
+            self.restart(threaded=threaded, delay=self.interval)
 
 
 class SimpleQueue(object):
@@ -868,7 +869,7 @@ def parse_html_form(attr_str, html, input_names={}, url=""):
             else:
                 return action, inputs  #: Passed attribute check
 
-    return {}, None  #: No matching form found
+    return None, None  #: No matching form found
 
 
 def chunks(iterable, size):
