@@ -77,14 +77,13 @@ if not exists(cache):
     makedirs(cache)
 
 bcc = FileSystemBytecodeCache(cache, '%s.cache')
-<<<<<<< HEAD
-loader = PrefixLoader({
-    "default": FileSystemLoader(join(PROJECT_DIR, "templates", "default")),
-    "dark": FileSystemLoader(join(PROJECT_DIR, "templates", "dark")),
-    "igel": FileSystemLoader(join(PROJECT_DIR, "templates", "igel")),
-    'js': FileSystemLoader(join(PROJECT_DIR, 'media', 'js'))
-})
-=======
+
+#loader = PrefixLoader({
+#    "default": FileSystemLoader(join(PROJECT_DIR, "templates", "default")),
+#    "dark": FileSystemLoader(join(PROJECT_DIR, "templates", "dark")),
+#    "igel": FileSystemLoader(join(PROJECT_DIR, "templates", "igel")),
+#    'js': FileSystemLoader(join(PROJECT_DIR, 'media', 'js'))
+#})
 
 mapping = {'js': FileSystemLoader(join(PROJECT_DIR, 'media', 'js'))}
 for template in os.listdir(join(PROJECT_DIR, "templates")):
@@ -92,7 +91,6 @@ for template in os.listdir(join(PROJECT_DIR, "templates")):
         mapping[template] = FileSystemLoader(join(PROJECT_DIR, "templates", template))
 
 loader = PrefixLoader(mapping)
->>>>>>> 3584f466df9479092fcc4a531d680c11eccb409c
 
 env = Environment(loader=loader, extensions=['jinja2.ext.i18n', 'jinja2.ext.autoescape'], trim_blocks=True, auto_reload=False,
     bytecode_cache=bcc)
