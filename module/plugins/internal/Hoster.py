@@ -152,7 +152,7 @@ class Hoster(Base):
         finally:
             self.check_status()
 
-    def isresource(self, url, redirect=True, resumable=None):
+    def isresource(self, url, redirect=True, resumable=None, post=None):
         resource = False
         maxredirs = 5
 
@@ -165,7 +165,8 @@ class Hoster(Base):
         elif redirect:
             maxredirs = int(self.config.get("maxredirs", plugin="UserAgentSwitcher")) or maxredirs  # @TODO: Remove `int` in 0.4.10
 
-        header = self.load(url, just_header=True)
+        header = self.load(url, just_header=True, post=post)
+        self.log_debug('checking header: ' + str(header))
 
         for i in range(1, maxredirs):
             if not redirect or header.get('connection') == "close":
@@ -180,7 +181,7 @@ class Hoster(Base):
 
                 if code in (301, 302) or resumable:
                     self.log_debug("Redirect #%d to: %s" % (i, location))
-                    header = self.load(location, just_header=True)
+                    header = self.load(location, just_header=True, post=post)
                     url = location
                     continue
 

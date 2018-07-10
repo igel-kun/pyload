@@ -21,6 +21,8 @@ import urllib
 import urlparse
 import xml.sax.saxutils  # @TODO: Remove in 0.4.10
 import zlib
+import tempfile
+import subprocess
 
 try:
     import simplejson as json
@@ -620,33 +622,45 @@ def str2int(value):
         return 0
 
 def parse_time(value):
-    if re.search("da(il)?y|today", value):
-        seconds = seconds_to_midnight()
-
-    elif re.search("\d:\d\d", value):
-        # use the HH:MM:SS format
-        factor_arr = [3600,60,1]
-        value = re.sub("[^:0-9]","", value)
-        seconds = sum([u*v for u,v in zip(factor_arr, map(int,value.split(':')))])
-
+    print "parsing time from " + str(value)
+    if type(value) in (list,tuple):
+        # if value is a list, return the first parseable waitmsg
+        for v in value:
+            try:
+                return parse_time(v)
+            except ValueError:
+                pass
+        # if none of the items in the list was parsable, raise the ValueError
+        raise ValueError('cannot parse time from ' + str(value))
     else:
-        regex   = re.compile(r'(\d+| (?:this|an?) )\s*(hr|hour|min|sec|)', re.I)
-        seconds = 0
-        for v, u in regex.findall(value):
-            if v.strip() in ("this", "a", "an"):
-                # if we have just " this/an/a " without a unit, do not return 1s as parsed time, but default to 1h
-                if u is '':
-                    return 3600
-                quant = 1
-            else:
-                quant = int(v)
+        if re.search("da(il)?y", value):
+            seconds = seconds_to_midnight()
 
-            seconds += quant * {'hr': 3600, 'hour': 3600, 'min': 60, 'sec': 1, '': 1}[u.lower()]
+        elif re.search("\d:\d\d", value):
+            # use the HH:MM:SS format, NOTE: when only one ':' is found, it assumes MM:SS
+            factor_arr = [1,60,3600]
+            value = re.sub("[^:0-9]","", value)
+            seconds = sum([u*v for u,v in zip(factor_arr, map(int,value.split(':')[::-1]))])
 
-    if seconds == 0:
-        return 3600
-    else:
-        return seconds
+        else:
+            regex   = re.compile(r'(\d+| (?:this|an?) )\s*(hr|hour|min|sec|)', re.I)
+            seconds = 0
+            for v, u in regex.findall(value):
+                print "parsing time from " + str(v) + " & " + str(u)
+                if v.strip() in ("this", "a", "an"):
+                    # if we have just " this/an/a " without a unit, do not return 1s as parsed time, but default to 1h
+                    if u is '':
+                        return 3600
+                    quant = 1
+                else:
+                    quant = int(v)
+
+                seconds += quant * {'hr': 3600, 'hour': 3600, 'min': 60, 'sec': 1, '': 1}[u.lower()]
+
+        if seconds == 0:
+            raise ValueError('cannot parse time from ' + str(value))
+        else:
+            return seconds
 
 
 
@@ -807,11 +821,15 @@ def parse_html_tag_attr_value(attr_name, tag):
     return m.group(2) if m else None
 
 
-def parse_html_form(attr_str, html, input_names={}):
+def parse_html_form(attr_str, html, input_names={}, url=""):
     for form in re.finditer(r'(?P<TAG><form[^>]*%s.*?>)(?P<CONTENT>.*?)</?(form|body|html).*?>' % attr_str,
                             html, re.I | re.S):
         inputs = {}
         action = parse_html_tag_attr_value("action", form.group('TAG'))
+
+        # if the url parameter was given, join it with the action value, in order to deal with relative actions
+        if url:
+            action = urlparse.urljoin(url, action)
 
         for inputtag in re.finditer(r'(<(input|textarea).*?>)([^<]*(?=</\2)|)',
                                     re.sub(
@@ -988,3 +1006,19 @@ def move_tree(src, dst, overwrite=False):
             os.rmdir(src_dir)
         except OSError:
             pass
+
+
+def make_oneline(link):
+    """ remove linebreaks from a link """
+    return re.sub('\n.*', r'..', link.strip(), re.MULTILINE | re.DOTALL)
+
+# TODO: use pyexecjs?
+def eval_js_script(script):
+    """ run a javascript program given as parameter and return the output """
+    js = JsEngine()
+    return js.eval(script)
+
+def get_domain(url):
+    return urlparse.urlsplit(url).netloc.split('.')[-2]
+
+

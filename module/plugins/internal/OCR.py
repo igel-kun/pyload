@@ -4,6 +4,7 @@ from __future__ import with_statement
 
 import os
 import subprocess
+import tempfile
 
 from .misc import encode, fsjoin
 from .Plugin import Plugin
@@ -79,25 +80,9 @@ class OCR(Plugin):
 
     def run_tesser(self, subset=False, digits=True,
                    lowercase=True, uppercase=True, pagesegmode=None):
-        # tmpTif = tempfile.NamedTemporaryFile(suffix=".tif")
         try:
-            tmpTif = open(
-                fsjoin(
-                    "tmp",
-                    "tmpTif_%s.tif" %
-                    self.classname),
-                "wb")
-            tmpTif.close()
-
-            # tmpTxt = tempfile.NamedTemporaryFile(suffix=".txt")
-            tmpTxt = open(
-                fsjoin(
-                    "tmp",
-                    "tmpTxt_%s.txt" %
-                    self.classname),
-                "wb")
-            tmpTxt.close()
-
+            tmpTif = tempfile.NamedTemporaryFile(suffix=".tif", delete=False)
+            tmpTxt = tempfile.NamedTemporaryFile(suffix=".txt", delete=False)
         except IOError, e:
             self.log_error(e)
             return
@@ -328,8 +313,8 @@ class OCR(Plugin):
 
                     black_pixel_in_col = True
 
-            if black_pixel_in_col is False and started is True:
-                rect = (firstX, topY, lastX, bottomY)
+            if started and not black_pixel_in_col:
+                rect = (firstX, topY, lastX + 1, bottomY + 1)
                 new_captcha = captcha.crop(rect)
 
                 w, h = new_captcha.size
@@ -340,6 +325,31 @@ class OCR(Plugin):
                 bottomY, topY = 0, height
 
         return letters
+
+    def join_letters(self, letters):
+        pixels = []
+        max_rows = 0
+        for l in letters:
+            max_rows = max(max_rows, l.size[1])
+            pixels.append(l.load())
+
+        result = []
+        for y in xrange(max_rows):
+            line = []
+            for i in xrange(len(letters)):
+                w, h = letters[i].size
+                if h > y:
+                    line.extend([pixels[i][x, h - y - 1] for x in xrange(w)])
+                else:
+                    line.extend([255 for x in xrange(w)])
+                # add some space between letters
+                line.extend([255, 255])
+            result.append(line)
+        result.reverse()
+
+        img = Image.new('L', (len(result[0]), len(result)), 'white')
+        img.putdata(sum(result, []))
+        return img
 
     def correct(self, values, var=None):
         if var:

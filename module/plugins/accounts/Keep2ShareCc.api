@@ -1,0 +1,47 @@
+# -*- coding: utf-8 -*-
+
+import re
+import time
+
+from module.plugins.internal.Account import Account
+from module.plugins.internal.misc import json
+
+
+class Keep2ShareCc(Account):
+    __name__    = "Keep2ShareCc"
+    __type__    = "account"
+    __version__ = "0.13"
+    __status__  = "testing"
+
+    __description__ = """Keep2Share.cc account plugin"""
+    __license__     = "GPLv3"
+    __authors__     = [("aeronaut", "aeronaut@pianoguy.de"),
+                       ("Walter Purcaro", "vuolter@gmail.com"),
+                       ("igel", None                        )]
+
+    API_URL = 'https://keep2share.cc/api/v2/'
+
+    def api_response(self, method, post_data = {}):
+        # dump post_data to json string before querying
+        answer = self.load(self.API_URL + method, post=json.dumps(post_data))
+        self.log_debug("API answer: " + answer)
+        return json.loads(answer)
+
+
+    def grab_info(self, user, password, data):
+        res = self.api_response("AccountInfo", {"auth_token": data["auth_token"]})
+        # free accounts will have  'account_expires': false
+        premium = True if res['account_expires'] else False
+        return {'validuntil': res['account_expires'],
+                'trafficleft': res['available_traffic'],
+                'premium': premium }
+
+
+    def signin(self, user, password, data):
+        res = self.api_response("Login", {'username': user, 'password':password})
+        if res['status'] == "success":
+            self.info['data'].update({'auth_token': res['auth_token']})
+        else:
+            self.fail_login()
+
+        

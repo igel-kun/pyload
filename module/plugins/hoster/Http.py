@@ -20,6 +20,9 @@ class Http(Hoster):
     __license__ = "GPLv3"
     __authors__ = [("Walter Purcaro", "vuolter@gmail.com")]
 
+    def noop(self):
+        pass
+
     def setup(self):
         self.chunk_limit = -1
         self.resume_download = True
@@ -27,6 +30,27 @@ class Http(Hoster):
     def process(self, pyfile):
         url = re.sub(r'^(jd|py)', "http", pyfile.url)
         netloc = urlparse.urlparse(url).netloc
+
+        # if we encounter a redicrect, add the new location as new link in the package and exit
+        header = self.load(url, just_header=True, redirect=False)
+        if 'location' in header:
+            # follow all redirects
+            while True:
+                loc = header['location'].strip()
+                if loc[0] == '/':
+                    loc = urlparse.urljoin(url, loc)
+                url = loc
+
+                self.log_info(_('following redirect to ') + url)
+                header = self.load(url, just_header=True, redirect=False)
+                if not 'location' in header:
+                    break
+            self.log_info(_('adding %s as new item in the package' % url))
+            self.pyload.api.addFiles(pyfile.package().id, [url])
+            # if we don't download anything, we cannot check it
+            self._check_download = self.noop
+            self.check_duplicates = self.noop
+            return
 
         for _i in range(2):
             try:

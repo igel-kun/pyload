@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import re
-import urlparse
+from urlparse import urljoin
 
 from ..internal.SimpleHoster import SimpleHoster
 
@@ -32,6 +32,7 @@ class FileboomMe(SimpleHoster):
     LINK_PATTERN = r'/file/url\.html\?file=\w+'
 
     CAPTCHA_PATTERN = r'<img .* src="(/file/captcha.html\?v=\w+)"'
+    SLOW_ID_PATTERN = r'data-slow-id="(\w+)"'
 
     def setup(self):
         self.resume_download = True
@@ -39,22 +40,18 @@ class FileboomMe(SimpleHoster):
         self.chunk_limit = 1
 
     def handle_free(self, pyfile):
-        post_url = urlparse.urljoin(
-            pyfile.url, "file/" + self.info['pattern']['ID'])
-
-        m = re.search(r'data-slow-id="(\w+)"', self.data)
-        if m is not None:
-            self.data = self.load(post_url,
-                                  post={'slow_id': m.group(1)})
-
+        m = re.search(self.SLOW_ID_PATTERN, self.data)
+        if m is  None:
+            self.error(_("Slow-ID not found"))
+        else:
+            post_url = urljoin(pyfile.url, "file/" + self.info['pattern']['ID'])
+            self.data = self.load(post_url, post={'slow_id': m.group(1)})
             m = re.search(self.LINK_PATTERN, self.data)
             if m is not None:
-                self.link = urlparse.urljoin(pyfile.url, m.group(0))
+                self.link = urljoin(pyfile.url, m.group(0))
 
             else:
-                m = re.search(
-                    r'<input type="hidden" name="uniqueId" value="(\w+)">',
-                    self.data)
+                m = re.search(r'<input type="hidden" name="uniqueId" value="(\w+)">', self.data)
                 if m is None:
                     m = re.search(r'>\s*Please wait ([\d:]+)', self.data)
                     if m is not None:
@@ -66,11 +63,9 @@ class FileboomMe(SimpleHoster):
 
                 else:
                     uniqueId = m.group(1)
-
                     m = re.search(self.CAPTCHA_PATTERN, self.data)
                     if m is not None:
-                        captcha = self.captcha.decrypt(
-                            urlparse.urljoin(pyfile.url, m.group(1)))
+                        captcha = self.captcha.decrypt(urljoin(pyfile.url, m.group(1)))
                         self.data = self.load(post_url,
                                               post={'CaptchaForm[code]': captcha,
                                                     'free': 1,
@@ -82,12 +77,8 @@ class FileboomMe(SimpleHoster):
 
                         else:
                             self.check_errors()
-
-                            self.data = self.load(post_url,
-                                                  post={'free': 1,
-                                                        'uniqueId': uniqueId})
+                            self.data = self.load(post_url, post={'free': 1,'uniqueId': uniqueId})
 
                             m = re.search(self.LINK_PATTERN, self.data)
                             if m is not None:
-                                self.link = urlparse.urljoin(
-                                    pyfile.url, m.group(0))
+                                self.link = urljoin(pyfile.url, m.group(0))

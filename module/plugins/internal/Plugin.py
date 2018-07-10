@@ -158,7 +158,7 @@ class Plugin(object):
         raise Fail(encode(msg))  # @TODO: Remove `encode` in 0.4.10
 
     def load(self, url, get={}, post={}, ref=True, cookies=True, just_header=False, decode=True,
-             multipart=False, redirect=True, req=None):
+             multipart=False, redirect=True, req=None, redir_post=True):
         """
         Load content at url and returns it
 
@@ -169,6 +169,10 @@ class Plugin(object):
         :param cookies:
         :param just_header: If True only the header will be retrieved and returned as dict
         :param decode: Wether to decode the output according to http header, should be True in most cases
+        :param multipart:
+        :param redirect: follow encountered redirects
+        :param req: a reuqest factory to use
+        :param redir_post: post the 'post' dictionary on each redirect
         :return: Loaded content
         """
         if self.pyload.debug:
@@ -181,9 +185,10 @@ class Plugin(object):
         if req is False:
             req = get_request()
             req.setOption("timeout", 60)  # @TODO: Remove in 0.4.10
-
         elif not req:
             req = self.req
+        
+        pyc = (req.http if hasattr(req, "http") else req).c
 
         #@TODO: Move to network in 0.4.10
         if isinstance(cookies, list):
@@ -192,11 +197,17 @@ class Plugin(object):
         #@TODO: Move to network in 0.4.10
         if not redirect:
             # @NOTE: req can be a HTTPRequest or a Browser object
-            (req.http if hasattr(req, "http") else req).c.setopt(pycurl.FOLLOWLOCATION, 0)
+            pyc.setopt(pycurl.FOLLOWLOCATION, 0)
+        else:
+            pyc.setopt(pycurl.FOLLOWLOCATION, 1)
+            if redir_post:
+                pyc.setopt(pycurl.POSTREDIR, pycurl.REDIR_POST_ALL)
+            else:
+                pyc.setopt(pycurl.POSTREDIR, 0)
 
-        elif type(redirect) is int:
-            # @NOTE: req can be a HTTPRequest or a Browser object
-            (req.http if hasattr(req, "http") else req).c.setopt(pycurl.MAXREDIRS, redirect)
+            if type(redirect) is int:
+                # @NOTE: req can be a HTTPRequest or a Browser object
+                pyc.setopt(pycurl.MAXREDIRS, redirect)
 
         #@TODO: Move to network in 0.4.10
         if isinstance(ref, basestring):
@@ -215,8 +226,7 @@ class Plugin(object):
         #@TODO: Move to network in 0.4.10
         if not redirect:
             # @NOTE: req can be a HTTPRequest or a Browser object
-            (req.http if hasattr(req, "http") else req).c.setopt(
-                pycurl.FOLLOWLOCATION, 1)
+            pyc.setopt(pycurl.FOLLOWLOCATION, 1)
 
         elif type(redirect) is int:
             maxredirs = int(
@@ -225,8 +235,7 @@ class Plugin(object):
                     "maxredirs",
                     "plugin")) or 5  # @TODO: Remove `int` in 0.4.10
             # @NOTE: req can be a HTTPRequest or a Browser object
-            (req.http if hasattr(req, "http") else req).c.setopt(
-                pycurl.MAXREDIRS, maxredirs)
+            pyc.setopt(pycurl.MAXREDIRS, maxredirs)
 
         #@TODO: Move to network in 0.4.10
         if decode:

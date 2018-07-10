@@ -499,6 +499,22 @@ class Base(Plugin):
     def parse_html_form(self, attr_str="", input_names={}):
         return parse_html_form(attr_str, self.data, input_names)
 
+    def follow_all_links(self, link, referrer = None):
+        ''' follow all links presented to us at "link" and return the first non-referring link '''
+        if referrer:
+            self.log_debug('using referrer %s' % referrer)
+            self.req.http.lastURL = referrer
+
+        while True:
+            header = self.load(link, ref=True, redirect=False, just_header=True)
+        
+            if 'location' in header:
+                link = header['location']
+                self.log_debug('following to %s' % link)
+            else:
+                break
+        return link
+
     def get_password(self):
         """
         Get the password the user provided in the package

@@ -31,15 +31,10 @@ class XFileSharing(XFSHoster):
             self, level, plugintype, pluginname, messages)
 
     def init(self):
-        self.__pattern__ = self.pyload.pluginManager.hosterPlugins[
-            self.classname]['pattern']
+        self.__pattern__ = self.pyload.pluginManager.hosterPlugins[self.classname]['pattern']
 
-        self.PLUGIN_DOMAIN = re.match(
-            self.__pattern__,
-            self.pyfile.url).group("DOMAIN").lower()
-        self.PLUGIN_NAME = "".join(
-            part.capitalize() for part in re.split(
-                r'\.|\d+|-', self.PLUGIN_DOMAIN) if part != '.')
+        self.PLUGIN_DOMAIN = re.match(self.__pattern__, self.pyfile.url).group("DOMAIN").lower()
+        self.PLUGIN_NAME = "".join(part.capitalize() for part in re.split(r'\.|\d+|-', self.PLUGIN_DOMAIN) if part != '.')
 
     def setup(self):
         self.chunk_limit = -1 if self.premium else 1

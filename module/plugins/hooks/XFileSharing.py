@@ -27,22 +27,21 @@ class XFileSharing(Addon):
                             r'https?://(?:[^/]+\.)?(?P<DOMAIN>%s)/(?:embed-)?\w+'),
                  'crypter': (r'(?:https?://(?:www\.)?)(?!(?:www\.)?(?:%s))(?P<DOMAIN>(?:[\d.]+|[\w\-^_]{3,63}(?:\.[a-zA-Z]{2,})+)(?:\:\d+)?)/(?:user|folder)s?/\w+',
                              r'https?://(?:[^/]+\.)?(?P<DOMAIN>%s)/(?:user|folder)s?/\w+')}
-
     BUILTIN_HOSTERS = [  # WORKING HOSTERS:
         "ani-stream.com", "backin.net", "cloudshares.net", "cloudsix.me",
         "eyesfile.ca", "file4safe.com", "fileband.com", "filedwon.com",
         "fileparadox.in", "filevice.com", "hostingbulk.com", "junkyvideo.com",
         "ravishare.com", "salefiles.com", "sendmyway.com", "sharebeast.com",
-        "sharesix.com", "thefile.me", "verzend.be", "worldbytez.com",
-                        "xvidstage.com",
-                        # NOT TESTED:
-                        "101shared.com", "4upfiles.com", "filemaze.ws", "filenuke.com",
-                        "linkzhost.com", "mightyupload.com", "rockdizfile.com", "sharerepo.com",
-                        "shareswift.com", "uploadbaz.com", "uploadc.com", "vidbull.com",
-                        "zalaa.com", "zomgupload.com",
-                        # NOT WORKING:
-                        "amonshare.com", "banicrazy.info", "boosterking.com", "host4desi.com",
-                        "laoupload.com", "rd-fs.com"]
+        "sharesix.com", "verzend.be", "worldbytez.com",
+        "xvidstage.com", "filespace.com", "movdivx.com",
+        # NOT TESTED:
+        "101shared.com", "4upfiles.com", "filemaze.ws", "filenuke.com",
+        "linkzhost.com", "mightyupload.com", "rockdizfile.com", "sharerepo.com",
+        "shareswift.com", "uploadbaz.com",
+        "zomgupload.com", "allmyvideos.net",
+        # NOT WORKING:
+        "amonshare.com", "banicrazy.info", "boosterking.com", "host4desi.com",
+        "laoupload.com", "rd-fs.com"]
     BUILTIN_CRYPTERS = ["junocloud.me", "rapidfileshare.net"]
 
     def activate(self):

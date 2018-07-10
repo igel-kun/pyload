@@ -19,7 +19,7 @@ class RapidgatorNet(Account):
 
     TUNE_TIMEOUT = False
 
-    API_URL = "http://rapidgator.net/api/user/"
+    API_URL = "https://rapidgator.net/api/user/"
 
     def grab_info(self, user, password, data):
         validuntil = None
@@ -30,20 +30,20 @@ class RapidgatorNet(Account):
         try:
             sid = data.get('sid', None)
 
-            html = self.load(urlparse.urljoin(self.API_URL, "info"),
-                             get={'sid': sid})
+            html = self.load(urlparse.urljoin(self.API_URL, "info"), get={'sid': sid})
 
             self.log_debug("API:USERINFO", html)
 
             json_data = json.loads(html)
 
             if json_data['response_status'] == 200:
-                validuntil = json_data['response']['expire_date']
-                # @TODO: Remove `/ 1024` in 0.4.10
-                trafficleft = float(
-                    json_data['response']['traffic_left']) / 1024
-                premium = True
-
+                if json_data['response']:
+                    validuntil = json_data['response']['expire_date']
+                    # @TODO: Remove `/ 1024` in 0.4.10
+                    trafficleft = float(json_data['response']['traffic_left']) / 1024
+                    premium = True
+                else:
+                    premium = False
             else:
                 self.log_error(json_data['response_details'])
 
