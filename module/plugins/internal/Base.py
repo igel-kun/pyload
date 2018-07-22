@@ -64,7 +64,7 @@ class Base(Plugin):
         self.wantReconnect = False  # @TODO: Change to `want_reconnect` in 0.4.10
 
         #: Enable simultaneous processing of multiple downloads
-        self.multiDL = True  # @TODO: Change to `multi_dl` in 0.4.10
+        self.multiDL = False  # @TODO: Change to `multi_dl` in 0.4.10
 
         #: time.time() + wait in seconds
         self.waiting = False
