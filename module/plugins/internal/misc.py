@@ -623,7 +623,6 @@ def str2int(value):
         return 0
 
 def parse_time(value):
-    print "parsing time from " + str(value)
     if type(value) in (list,tuple):
         # if value is a list, return the first parseable waitmsg
         for v in value:
