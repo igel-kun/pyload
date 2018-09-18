@@ -33,7 +33,7 @@ class Keep2ShareCc(Account):
 
         return {'validuntil': json_data['account_expires'],
                 'trafficleft': json_data['available_traffic'] / 1024,  # @TODO: Remove `/ 1024` in 0.4.10
-                'premium': True}
+                'premium': (json_data['account_expires'] is not False)}
 
     def signin(self, user, password, data):
         if 'token' in data:
