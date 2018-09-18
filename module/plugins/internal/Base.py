@@ -26,7 +26,7 @@ def parse_fileInfo(klass, url="", html=""):
 class Base(Plugin):
     __name__ = "Base"
     __type__ = "base"
-    __version__ = "0.33"
+    __version__ = "0.34"
     __status__ = "stable"
 
     __pattern__ = r'^unmatchable$'
@@ -64,7 +64,7 @@ class Base(Plugin):
         self.wantReconnect = False  # @TODO: Change to `want_reconnect` in 0.4.10
 
         #: Enable simultaneous processing of multiple downloads
-        self.multiDL = True  # @TODO: Change to `multi_dl` in 0.4.10
+        self.multiDL = False  # @TODO: Change to `multi_dl` in 0.4.10
 
         #: time.time() + wait in seconds
         self.waiting = False
@@ -437,15 +437,13 @@ class Base(Plugin):
             if self.premium:
                 self.restart_free = True
             else:
-                self.fail(
-                    "%s | %s" %
-                    (msg, _("Url was already processed as free")))
+                self.fail("%s | %s" % (msg, _("Url was already processed as free")))
 
         self.req.clearCookies()
 
         raise Retry(encode(msg))  # @TODO: Remove `encode` in 0.4.10
 
-    def retry(self, attemps=5, wait=1, msg=""):
+    def retry(self, attemps=5, wait=1, msg="", msgfail=_("Max retries reached")):
         """
         Retries and begin again from the beginning
 
@@ -464,7 +462,7 @@ class Base(Plugin):
             self.retries[id] = 0
 
         if 0 < attemps <= self.retries[id]:
-            self.fail(msg or _("Max retries reached"))
+            self.fail(msgfail)
 
         self.retries[id] += 1
 
@@ -472,10 +470,9 @@ class Base(Plugin):
 
         raise Retry(encode(msg))  # @TODO: Remove `encode` in 0.4.10
 
-    def retry_captcha(self, attemps=10, wait=1,
-                      msg=_("Max captcha retries reached")):
-        self.captcha.invalid()
-        self.retry(attemps, wait, msg)
+    def retry_captcha(self, attemps=10, wait=1, msg="", msgfail=_("Max captcha retries reached")):
+        self.captcha.invalid(msg)
+        self.retry(attemps, wait, msg=_("Retry Captcha"), msgfail=msgfail)
 
     def fixurl(self, url, baseurl=None, unquote=True):
         url = fixurl(url, unquote=True)
@@ -494,6 +491,22 @@ class Base(Plugin):
 
     def parse_html_form(self, attr_str="", input_names={}):
         return parse_html_form(attr_str, self.data, input_names)
+
+    def follow_all_links(self, link, referrer = None):
+        ''' follow all links presented to us at "link" and return the first non-referring link '''
+        if referrer:
+            self.log_debug('using referrer %s' % referrer)
+            self.req.http.lastURL = referrer
+
+        while True:
+            header = self.load(link, ref=True, redirect=False, just_header=True)
+        
+            if 'location' in header:
+                link = header['location']
+                self.log_debug('following to %s' % link)
+            else:
+                break
+        return link
 
     def get_password(self):
         """

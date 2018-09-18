@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 
-from module.plugins.hoster.JWPlayerBased import JWPlayerBased
+#from module.plugins.hoster.JWPlayerBased import JWPlayerBased
+from ..internal.DeadHoster import DeadHoster
 
-
-class StreaminTo(JWPlayerBased):
+#class StreaminTo(JWPlayerBased):
+class StreaminTo(DeadHoster):
     __name__ = "StreaminTo"
     __type__ = "hoster"
     __version__ = "0.01"

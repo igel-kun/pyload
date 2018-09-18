@@ -17,12 +17,13 @@ class XFSHoster(SimpleHoster):
     __status__ = "stable"
 
     __pattern__ = r'^unmatchable$'
-    __config__  = [("activated"   , "bool", "Activated"                                        , True),
-                   ("use_premium" , "bool", "Use premium account if available"                 , True),
-                   ("fallback"    , "bool", "Fallback to free download if premium fails"       , True),
-                   ("chk_filesize", "bool", "Check file size"                                  , True),
-                   ("max_wait"    , "int" , "Reconnect if waiting time is greater than minutes", 10  ),
-                   ("min_size"    , "int" , "Minimum size of files to download"                , 0)]
+    __config__ = [("activated", "bool", "Activated", True),
+                  ("use_premium", "bool", "Use premium account if available", True),
+                  ("fallback", "bool",
+                   "Fallback to free download if premium fails", True),
+                  ("chk_filesize", "bool", "Check file size", True),
+                  ("max_wait", "int", "Reconnect if waiting time is greater than minutes", 10),
+                  ("min_size"    , "int" , "Minimum size of files to download", 0)]
 
     __description__ = """XFileSharing hoster plugin"""
     __license__ = "GPLv3"
@@ -45,11 +46,16 @@ class XFSHoster(SimpleHoster):
     OFFLINE_PATTERN       = r'(Not Found|file (?:was|has been)?\s*(?:removed|deleted)|no longer available|copyright (?:viola|infr|claim)|did\s*n.t comply(?:\s*\w+)* Terms of Use|File does not exist|file could not be found)'
     TEMP_OFFLINE_PATTERN  = r'server (?:is in )?maint[eai]*nance'
 
-    WAIT_PATTERN          = r'<span [^>]*id="countdown.*>(\d+)</span>|id="countdown" value=".*?(\d+).*?"|You have to wait ([^<]*)'
+    WAIT_PATTERN          = r'<span [^>]*(?:id|class)="(?:countdown|seconds).*>(\d+)</span>|id="countdown" value=".*?(\d+).*?"|You have to wait ([^<]*)'
     PREMIUM_ONLY_PATTERN  = r'available for Premium Users only'
     HAPPY_HOUR_PATTERN    = r'[Hh]appy hour'
     ERROR_PATTERN         = r'(?:class=["\'](?:err|alert.*?)["\'].*?>|<[Cc]enter><b>|>Error</td>|>\(ERROR:)(?:\s*<.+?>\s*)*(.+?)(?:["\']|<|\))'
     LINK_LEECH_PATTERN = r'<h2>Download Link</h2>\s*<textarea.*?>(.+?)'
+    # "extend" SimpleHoster's search flags
+    SEARCH_FLAGS          = dict(SimpleHoster.SEARCH_FLAGS, **({'CAPTCHA_BLOCK': re.S}))
+
+
+
 
     CAPTCHA_PATTERN = r'(https?://[^"\']+?/captchas?/[^"\']+)'
     CAPTCHA_BLOCK_PATTERN = r'>Enter code.*?<div.*?>(.+?)</div>'
@@ -106,15 +112,19 @@ class XFSHoster(SimpleHoster):
                 # if parse_time failed to parse the time, wait a default of 1h
                 self.retry(wait = 3600)
 
-            m = re.search(self.LINK_PATTERN, self.data, re.DOTALL)
-            if m is None:
-                m = re.search(self.LINK_PATTERN, self.data, re.MULTILINE | re.DOTALL)
+            m = re.search(self.LINK_PATTERN, self.data, self.SEARCH_FLAGS.get('LINK',0))
             if m is not None:
                 for link_match in m.groups():
                     if link_match:
                         self.link = link_match
                 self.log_debug('found link: %s' % make_oneline(self.link))
                 break
+            else:
+                # if we didn't find the link, check for the WAIT_PATTERN to see if we need to do any waiting
+                m = re.search(self.WAIT_PATTERN, self.data, self.SEARCH_FLAGS.get('WAIT',0))
+                if m is not None:
+                    wait_time = parse_time(m.groups() or m.group(0))
+                    self.set_wait(wait_time)
 
             # solve the captcha
             next_post = self._post_parameters()
@@ -130,7 +140,6 @@ class XFSHoster(SimpleHoster):
                 self.link = self.last_header.get('location')
                 self.log_debug('found redirect to %s' % self.link)
                 break
-
         else:
             self.error(_("Too many OPs"))
 
@@ -187,7 +196,7 @@ class XFSHoster(SimpleHoster):
             self.fail(stmsg)
 
         #: Get easybytez.com link for uploaded file
-        m = re.search(self.LINK_LEECH_PATTERN, self.data)
+        m = re.search(self.LINK_LEECH_PATTERN, self.data, self.SEARCH_FLAGS.get('LINK_LEECH',0))
         if m is None:
             self.error(_("LINK_LEECH_PATTERN not found"))
 
@@ -197,24 +206,17 @@ class XFSHoster(SimpleHoster):
         if self.FORM_PATTERN or self.FORM_INPUTS_MAP:
             self.log_debug('using local FORM_PATTERN')
             action, inputs = self.parse_html_form(self.FORM_PATTERN or "", self.FORM_INPUTS_MAP or {})
-
-            if inputs:
-                self.log_debug('read: ')
-                for key, val in inputs.iteritems():
-                    self.log_debug('%s' % key)
-                    self.log_debug('%s' % val)
         else:
-            action, inputs = self.parse_html_form(
-                input_names={'op': re.compile(r'^download')})
+            action, inputs = self.parse_html_form(input_names={'op': re.compile(r'^download')})
 
         if not inputs:
             action, inputs = self.parse_html_form('F1')
             if not inputs:
                 self.fail(msg=self.info.get('error') or _("TEXTAREA F1 not found"))
         
-        if hasattr(self, 'HIDDEN_POST_PARAMETERS'):
+        if hasattr(self, 'HIDDEN_POST_PATTERN'):
             self.log_debug('parsing additional parameters...')
-            for inputtag in re.finditer(self.HIDDEN_POST_PARAMETERS, self.html):
+            for inputtag in re.finditer(self.HIDDEN_POST_PATTERN, self.html, self.SEARCH_FLAGS.get('HIDDEN_POST',0)):
                 self.log_debug("adding hidden post parameter: %s = %s" % (inputtag.group('id'), inputtag.group('value')))
                 inputs[inputtag.group('id')] = inputtag.group('value')
         else:
@@ -264,13 +266,13 @@ class XFSHoster(SimpleHoster):
         return inputs
 
     def handle_captcha(self, inputs):
-        m = re.search(self.CAPTCHA_PATTERN, self.data)
+        m = re.search(self.CAPTCHA_PATTERN, self.data, self.SEARCH_FLAGS.get('CAPTCHA',0))
         if m is not None:
             captcha_url = m.group(1)
             inputs['code'] = self.captcha.decrypt(captcha_url)
             return
 
-        m = re.search(self.CAPTCHA_BLOCK_PATTERN, self.data, re.S)
+        m = re.search(self.CAPTCHA_BLOCK_PATTERN, self.data, self.SEARCH_FLAGS.get('CAPTCHA_BLOCK',0))
         if m is not None:
             captcha_div = m.group(1)
             numerals = re.findall(

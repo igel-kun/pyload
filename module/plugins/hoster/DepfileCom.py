@@ -22,7 +22,7 @@ class DepfileCom(SimpleHoster):
     NAME_PATTERN = r'<th>File name:</th>\n\s*<td>(?P<N>[^<]*)</td>'
     ERROR_PATTERN = r"<p class=['\"](?:notice|error).*</p>"
     SIZE_PATTERN = r'<th>Size:</th>\n\s*<td>(?P<S>[^<]*)</td>'
-    WAIT_PATTERN = '(?:no less than .*? should pass|users can download .* per day)'
+    WAIT_PATTERN = '(?:no less than .*? should pass|users can download .* per day|[Nn]o less than .*? should pass)'
     SEARCH_FLAGS = {'NAME_PATTERN': re.MULTILINE, 'SIZE_PATTERN': re.MULTILINE}
 
 
@@ -35,8 +35,6 @@ class DepfileCom(SimpleHoster):
             captcha_response = self.captcha.decrypt(urlparse.urljoin(pyfile.url, captcha_img), ocr="VerticalShift")
             self.data = self.load(pyfile.url, post={'vvcid': vvcid, 'verifycode': captcha_response, 'FREE':'Low Speed Download'})
 
-            self.check_errors()
-            #self.log_debug(self.data)
             if re.search('Wrong CAPTCHA', self.data):
                 self.captcha.invalid()
                 self.log_info(_('captcha was wrong'))
@@ -45,8 +43,9 @@ class DepfileCom(SimpleHoster):
                 self.retry(wait = 2*60*60)
             else:
                 self.captcha.correct()
-                self.set_wait(60)
+                self.check_errors()
                 
+                self.set_wait(60)
                 js = JsEngine()
                 varname = re.search(r'getElementById\("wait_url"\).innerHTML=.*?\+(\w*)\+', self.data).group(1)
                 js_code = (re.search(r'var .*_keyStr.*', self.data).group(0) + ';' +

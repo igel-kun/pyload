@@ -170,6 +170,10 @@ class Plugin(object):
         :param cookies:
         :param just_header: If True only the header will be retrieved and returned as dict
         :param decode: Wether to decode the output according to http header, should be True in most cases
+        :param multipart:
+        :param redirect: follow encountered redirects
+        :param req: a reuqest factory to use
+        :param redir_post: post the 'post' dictionary on each redirect
         :return: Loaded content
         """
         if self.pyload.debug:
@@ -184,6 +188,8 @@ class Plugin(object):
             req.setOption("timeout", 60)  # @TODO: Remove in 0.4.10
         elif not req:
             req = self.req
+        
+        pyc = (req.http if hasattr(req, "http") else req).c
 
         pyc = (req.http if hasattr(req, "http") else req).c
 
@@ -203,9 +209,8 @@ class Plugin(object):
                 pyc.setopt(pycurl.POSTREDIR, 0)
 
             if type(redirect) is int:
-                maxredirs = int(self.pyload.api.getConfigValue("UserAgentSwitcher", "maxredirs", "plugin")) or 5  #@TODO: Remove `int` in 0.4.10
+                # @NOTE: req can be a HTTPRequest or a Browser object
                 pyc.setopt(pycurl.MAXREDIRS, redirect)
-
 
         #@TODO: Move to network in 0.4.10
         if isinstance(ref, basestring):
@@ -221,6 +226,19 @@ class Plugin(object):
             multipart,
             decode is True)  # @TODO: Fix network multipart in 0.4.10
 
+        #@TODO: Move to network in 0.4.10
+        if not redirect:
+            # @NOTE: req can be a HTTPRequest or a Browser object
+            pyc.setopt(pycurl.FOLLOWLOCATION, 1)
+
+        elif type(redirect) is int:
+            maxredirs = int(
+                self.pyload.api.getConfigValue(
+                    "UserAgentSwitcher",
+                    "maxredirs",
+                    "plugin")) or 5  # @TODO: Remove `int` in 0.4.10
+            # @NOTE: req can be a HTTPRequest or a Browser object
+            pyc.setopt(pycurl.MAXREDIRS, maxredirs)
 
         #@TODO: Move to network in 0.4.10
         if decode:

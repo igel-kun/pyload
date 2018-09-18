@@ -1,7 +1,7 @@
 from ..internal.DeadHoster import DeadHoster
 
 
-class Auroravid(DeadHoster):
+class AuroravidTo(DeadHoster):
     __name__ = "AuroravidTo"
     __type__ = "hoster"
     __version__ = "0.01"

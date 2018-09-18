@@ -109,6 +109,10 @@ class Account(Plugin):
         self.sync()
         self.setup()
 
+        if self.user is None:
+            self.log_debug('cowardly refusing to login without user')
+            return False
+
         timestamp = time.time()
 
         try:

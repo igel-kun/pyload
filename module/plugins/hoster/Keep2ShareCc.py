@@ -31,6 +31,7 @@ class Keep2ShareCc(SimpleHoster):
     DISPOSITION = False  # @TODO: Recheck in v0.4.10
 
     WAIT_PATTERN         = r'Please wait ([\d:]+) to download this file'
+#    URL_REPLACEMENTS = [(__pattern__ + ".*", "https://keep2s.cc/file/\g<ID>")]
     URL_REPLACEMENTS = [(__pattern__ + ".*", "https://k2s.cc/file/\g<ID>")]
 
     API_URL = "https://keep2share.cc/api/v2/"

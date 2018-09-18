@@ -25,7 +25,7 @@ from module.plugins.captcha.ReCaptcha import ReCaptcha
 class FilesmonsterComH(SimpleHoster):
     __name__ = "FilesmonsterComH"
     __type__ = "hoster"
-    __pattern__ = r"http://(?:w{3}\.)?filesmonster\.com/+dl/.*"
+    __pattern__ = r"https?://(?:w{3}\.)?filesmonster\.com/+dl/.*"
     __version__ = "0.01"
     __description__ = """Filesmonster.com Hoster Plugin"""
     __author_name__ = ("igel")
@@ -54,8 +54,6 @@ class FilesmonsterComH(SimpleHoster):
             break
         else:
           self.fail("No valid captcha solution received")
-      else:
-        self.parseError('could not find the captcha key')
 
 
     def handle_wait(self):
@@ -98,10 +96,10 @@ class FilesmonsterComH(SimpleHoster):
 
 
 
-    def handle_free(self):
-      self.data = self.load(self.pyfile.url, decode=True, cookies=True)
+    def handle_free(self, pyfile):
+      self.data = self.load(pyfile.url, decode=True, cookies=True)
       # filesmonster starts off with a captcha, so polite...
-      self.handle_captcha(self.pyfile)
+      self.handle_captcha(pyfile)
       # next, we get to wait
       self.handle_wait()
       # and finally, we can get the link

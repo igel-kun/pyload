@@ -37,13 +37,17 @@ class Http(Hoster):
         if 'location' in header:
             # follow all redirects
             while True:
-                loc = header['location']
-                self.log_info(_('following redirect to ') + loc)
-                header = self.load(loc, just_header=True, redirect=False)
+                loc = header['location'].strip()
+                if loc[0] == '/':
+                    loc = urlparse.urljoin(url, loc)
+                url = loc
+
+                self.log_info(_('following redirect to ') + url)
+                header = self.load(url, just_header=True, redirect=False)
                 if not 'location' in header:
                     break
-            self.log_info(_('adding %s as new item in the package' % loc))
-            self.pyload.api.addFiles(pyfile.package().id, [loc])
+            self.log_info(_('adding %s as new item in the package' % url))
+            self.pyload.api.addFiles(pyfile.package().id, [url])
             # if we don't download anything, we cannot check it
             self._check_download = self.noop
             self.check_duplicates = self.noop

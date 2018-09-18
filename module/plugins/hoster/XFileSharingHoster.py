@@ -43,13 +43,6 @@ class XFileSharingHoster(XFSHoster):
 
         self.PLUGIN_NAME   = "".join(part.capitalize() for part in re.split(r'\.|\d+|-', self.PLUGIN_DOMAIN) if part != '.')
 
-        self.PLUGIN_DOMAIN = re.match(
-            self.__pattern__,
-            self.pyfile.url).group("DOMAIN").lower()
-        self.PLUGIN_NAME = "".join(
-            part.capitalize() for part in re.split(
-                r'\.|\d+|-', self.PLUGIN_DOMAIN) if part != '.')
-
     #@TODO: Recheck in 0.4.10
     def setup_base(self):
         XFSHoster.setup_base(self)

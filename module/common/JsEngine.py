@@ -36,7 +36,7 @@ JS2PY = False
 PRINT_COMMANDS = {'js':'print',
         'pyv8':'print',
         'rhino':'print',
-        'node js':'console.log'}
+        'node':'console.log'}
 
 def call_external(command, extra_env = {}):
     my_env = os.environ.copy()
@@ -69,10 +69,11 @@ if not ENGINE or DEBUG:
     except:
         pass
 
+
 if not ENGINE or DEBUG:
     try:
-        if compute_42(["js", "-e"], PRINT_COMMANDS['node js']) == "42":
-            ENGINE = "node js"
+        if compute_42(["js", "-e"], PRINT_COMMANDS['node']) == "42":
+            ENGINE = "node"
             NODE = True
     except:
         pass
@@ -140,13 +141,13 @@ class JsEngine():
         if not DEBUG:
             if self.engine == "pyv8":
                 return self.eval_pyv8(script)
-            elif ENGINE == "js2py":
+            elif self.engine == "js2py":
                 return self.eval_js2py(script)
-            elif ENGINE == "js":
+            elif self.engine == "js":
                 return self.eval_js(script)
-            elif ENGINE == "node":
+            elif self.engine == "node":
                 return self.eval_node(script)
-            elif ENGINE == "rhino":
+            elif self.engine == "rhino":
                 return self.eval_rhino(script)
         else:
             results = []

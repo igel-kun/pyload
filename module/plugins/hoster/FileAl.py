@@ -2,7 +2,6 @@
 
 from module.plugins.internal.XFSHoster import XFSHoster
 
-
 class FileAl(XFSHoster):
     __name__    = "FileAl"
     __type__    = "hoster"
@@ -17,5 +16,12 @@ class FileAl(XFSHoster):
 
 
     PLUGIN_DOMAIN = "file.al"
-    LINK_PATTERN     = r'<a href="(.+?)".*?>Click here to download'
+    LINK_PATTERN     = r'<a [^>]*href="(.+?)".*?>Click here to download'
+    WAIT_PATTERN     = r'countdown.*?seconds.*?(\d+)'
+    # "extend" the XFSHoster dict
+    SEARCH_FLAGS     = dict(XFSHoster.SEARCH_FLAGS, **({'LINK': re.MULTILINE | re.DOTALL}))
+
+    def setup(self):
+        self.multiDL = self.premium
+        self.resume_download = True
 

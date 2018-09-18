@@ -4,6 +4,7 @@ import re
 import time
 import urlparse
 
+from module.network.HTTPRequest import BadHeader
 from .misc import parse_html_form, parse_time, set_cookie
 from .Account import Account
 
@@ -175,7 +176,14 @@ class XFSAccount(Account):
                 'premium': premium}
 
     def signin(self, user, password, data):
-        self.data = self.load(self.LOGIN_URL, cookies=self.COOKIES)
+        try:
+            self.data = self.load(self.LOGIN_URL, cookies=self.COOKIES)
+        except Exception, e:
+            print "XFSAccount: SIGNIN FAILED WITH EXCEPTION: %s, RERAISING TO HANDLE PROPERLY" % str(e)
+            raise
+        except BadHeader, e:
+            print "XFSAccount: SIGNIN FAILED WITH BadHeader: %s, RERAISING TO HANDLE PROPERLY" % str(e)
+            raise
 
         if re.search(self.LOGIN_SKIP_PATTERN, self.data):
             self.skip_login()

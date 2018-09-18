@@ -78,6 +78,13 @@ if not exists(cache):
 
 bcc = FileSystemBytecodeCache(cache, '%s.cache')
 
+#loader = PrefixLoader({
+#    "default": FileSystemLoader(join(PROJECT_DIR, "templates", "default")),
+#    "dark": FileSystemLoader(join(PROJECT_DIR, "templates", "dark")),
+#    "igel": FileSystemLoader(join(PROJECT_DIR, "templates", "igel")),
+#    'js': FileSystemLoader(join(PROJECT_DIR, 'media', 'js'))
+#})
+
 mapping = {'js': FileSystemLoader(join(PROJECT_DIR, 'media', 'js'))}
 for template in os.listdir(join(PROJECT_DIR, "templates")):
     if os.path.isdir(join(PROJECT_DIR, "templates", template)):

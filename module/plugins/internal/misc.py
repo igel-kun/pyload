@@ -45,7 +45,7 @@ except ImportError:
 class misc(object):
     __name__ = "misc"
     __type__ = "plugin"
-    __version__ = "0.50"
+    __version__ = "0.51"
     __status__ = "stable"
 
     __pattern__ = r'^unmatchable$'
@@ -246,6 +246,23 @@ def threaded(fn):
 
     return run
 
+def sign_string(message, pem_private, pem_passphrase="" , sign_algo="SHA384"):
+    """
+    Generate a signature for string using the `sign_algo` and `RSA` algorithms
+    """
+    from Crypto.PublicKey import RSA
+    from Crypto.Signature import PKCS1_v1_5
+    from binascii import b2a_hex
+
+    if sign_algo not in ("MD5", "SHA1", "SHA256", "SHA384", "SHA512"):
+        raise ValueError("Unsupported Signing algorithm")
+
+
+    priv_key = RSA.importKey(pem_private, passphrase=pem_passphrase)
+    signer = PKCS1_v1_5.new(priv_key)
+    digest = getattr(__import__('Crypto.Hash', fromlist=[sign_algo]), sign_algo).new()
+    digest.update(message)
+    return b2a_hex(signer.sign(digest))
 
 def format_time(value):
     dt = datetime.datetime(1, 1, 1) + \
@@ -625,29 +642,39 @@ def str2int(value):
         return 0
 
 def parse_time(value):
-    if re.search("da(il)?y|today", value):
-        seconds = seconds_to_midnight()
-
-    elif re.search("\d:\d\d", value):
-        # use the HH:MM:SS format, NOTE: when only one ':' is found, it assumes MM:SS
-        factor_arr = [1,60,3600]
-        value = re.sub("[^:0-9]","", value)
-        seconds = sum([u*v for u,v in zip(factor_arr, map(int,value.split(':')[::-1]))])
-
+    if type(value) in (list,tuple):
+        # if value is a list, return the first parseable waitmsg
+        for v in value:
+            try:
+                return parse_time(v)
+            except ValueError:
+                pass
+        # if none of the items in the list was parsable, raise the ValueError
+        raise ValueError('cannot parse time from ' + str(value))
     else:
-        regex   = re.compile(r'(\d+| (?:this|an?) )\s*(hr|hour|min|sec|)', re.I)
-        seconds = 0
-        for v, u in regex.findall(value):
-            print "parsing time from " + str(v) + " & " + str(u)
-            if v.strip() in ("this", "a", "an"):
-                # if we have just " this/an/a " without a unit, do not return 1s as parsed time, but default to 1h
-                if u is '':
-                    return 3600
-                quant = 1
-            else:
-                quant = int(v)
+        if re.search("da(il)?y", value):
+            seconds = seconds_to_midnight()
 
-            seconds += quant * {'hr': 3600, 'hour': 3600, 'min': 60, 'sec': 1, '': 1}[u.lower()]
+        elif re.search("\d:\d\d", value):
+            # use the HH:MM:SS format, NOTE: when only one ':' is found, it assumes MM:SS
+            factor_arr = [1,60,3600]
+            value = re.sub("[^:0-9]","", value)
+            seconds = sum([u*v for u,v in zip(factor_arr, map(int,value.split(':')[::-1]))])
+
+        else:
+            regex   = re.compile(r'(\d+| (?:this|an?) )\s*(hr|hour|min|sec|)', re.I)
+            seconds = 0
+            for v, u in regex.findall(value):
+                print "parsing time from " + str(v) + " & " + str(u)
+                if v.strip() in ("this", "a", "an"):
+                    # if we have just " this/an/a " without a unit, do not return 1s as parsed time, but default to 1h
+                    if u is '':
+                        return 3600
+                    quant = 1
+                else:
+                    quant = int(v)
+
+                seconds += quant * {'hr': 3600, 'hour': 3600, 'min': 60, 'sec': 1, '': 1}[u.lower()]
 
     if seconds == 0:
         raise ValueError('cannot parse time from ' + str(value))
@@ -816,6 +843,10 @@ def parse_html_form(attr_str, html, input_names={}, url=""):
                             html, re.I | re.S):
         inputs = {}
         action = parse_html_tag_attr_value("action", form.group('TAG'))
+        # if the url parameter was given, join it with the action value, in order to deal with relative actions
+        if url:
+            action = urlparse.urljoin(url, action)
+
         # if the url parameter was given, join it with the action value, in order to deal with relative actions
         if url:
             action = urlparse.urljoin(url, action)
@@ -997,6 +1028,7 @@ def move_tree(src, dst, overwrite=False):
             pass
 
 def make_oneline(link):
+    """ remove linebreaks from a link """
     return re.sub('\n.*', r'..', link.strip(), re.MULTILINE | re.DOTALL)
 
 # TODO: use pyexecjs?
@@ -1007,4 +1039,5 @@ def eval_js_script(script):
 
 def get_domain(url):
     return urlparse.urlsplit(url).netloc.split('.')[-2]
+
 
