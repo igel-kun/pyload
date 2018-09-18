@@ -28,8 +28,10 @@ ENGINE = ""
 DEBUG = False
 JS = False
 PYV8 = False
+NODE = False
 RHINO = False
-NODE_JS = False
+NODE = False
+JS2PY = False
 
 PRINT_COMMANDS = {'js':'print',
         'pyv8':'print',
@@ -47,7 +49,19 @@ def compute_42(command, print_cmd):
     return call_external(command)
 
 
-if not ENGINE:
+if not ENGINE or DEBUG:
+    try:
+        import js2py
+        out = js2py.eval_js("(23+19).toString()")
+
+        #integrity check
+        if out.strip() == "42":
+            ENGINE = "js2py"
+        JS2PY = True
+    except:
+        pass
+
+if not ENGINE or DEBUG:
     try:
         if compute_42(["js", "-e"], PRINT_COMMANDS['js']) == "42":
             ENGINE = "js"
@@ -55,11 +69,11 @@ if not ENGINE:
     except:
         pass
 
-if not ENGINE:
+if not ENGINE or DEBUG:
     try:
         if compute_42(["js", "-e"], PRINT_COMMANDS['node js']) == "42":
             ENGINE = "node js"
-            NODE_JS = True
+            NODE = True
     except:
         pass
 
@@ -104,7 +118,7 @@ class JsEngine():
         return PRINT_COMMANDS[self.engine]
 
     def eval(self, script):
-        if self.engine == 'pyv8':
+        if self.engine in ('pyv8', 'js2py')
             return self.eval_raw(script)
         else:
             return self.eval_raw(self.print_command() + "(eval(unescape('" + quote(script) + "')))")
@@ -126,11 +140,13 @@ class JsEngine():
         if not DEBUG:
             if self.engine == "pyv8":
                 return self.eval_pyv8(script)
-            elif self.engine == "js":
+            elif ENGINE == "js2py":
+                return self.eval_js2py(script)
+            elif ENGINE == "js":
                 return self.eval_js(script)
-            elif self.engine == "node js":
-                return self.eval_node_js(script)
-            elif self.engine == "rhino":
+            elif ENGINE == "node":
+                return self.eval_node(script)
+            elif ENGINE == "rhino":
                 return self.eval_rhino(script)
         else:
             results = []
@@ -138,13 +154,17 @@ class JsEngine():
                 res = self.eval_pyv8(script)
                 print "PyV8:", res
                 results.append(res)
+            if JS2PY:
+                res = self.eval_js2py(script)
+                print "js2py:", res
+                results.append(res)
             if JS:
                 res = self.eval_js(script)
                 print "JS:", res
                 results.append(res)
-            if NODE_JS:
-                res = self.eval_node_js(script)
-                print "NODE_JS:", res
+            if NODE:
+                res = self.eval_node(script)
+                print "NODE:", res
                 results.append(res)
             if RHINO:
                 res = self.eval_rhino(script)
@@ -169,15 +189,18 @@ class JsEngine():
     def eval_js(self, script):
         return call_external(["js", "-e", script])
 
-    def eval_node_js(self, script):
+    def eval_node(self, script):
         return call_external(["js", "-e", script])
+
+    def eval_js2py(self, script):
+        return js2py.eval_js(script).strip()
 
     def eval_rhino(self, script):
         res = call_external(["java", "-cp", path, "org.mozilla.javascript.tools.shell.Main", "-e", script])
         return res.decode("utf8").encode("ISO-8859-1")
 
     def error(self):
-        return _("No js engine detected, please install either Spidermonkey, ossp-js, pyv8 or rhino")
+        return _("No js engine detected, please install either js2py, Spidermonkey, ossp-js, pyv8, nodejs or rhino")
 
 if __name__ == "__main__":
     js = JsEngine()
