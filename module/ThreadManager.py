@@ -143,7 +143,7 @@ class ThreadManager:
         try:
             self.assignJob()
         except Exception, e:
-            self.log.warning("Assign job error", e)
+            self.log.warning("Assign job error: %s", str(e))
             if self.core.debug:
                 print_exc()
             
@@ -252,6 +252,7 @@ class ThreadManager:
         return True
 
     #----------------------------------------------------------------------
+    @lock
     def assignJob(self):
         """assing a job to a thread if possible"""
 
@@ -267,7 +268,7 @@ class ThreadManager:
         onlimit = [x[0] for x in inuse if x[1] > 0 and x[2] >= x[1]]
 
         occ = [x.active.pluginname for x in self.threads if x.active and x.active.hasPlugin() and not x.active.plugin.multiDL] + onlimit
-        
+
         occ.sort()
         occ = tuple(set(occ))
         job = self.core.files.getJob(occ)
