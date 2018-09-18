@@ -146,11 +146,12 @@ class XDCCRequest(irc.client.SimpleIRCClient):
         self.plugin.log_debug("XDCC - parsed external IP %s from welcome message: %s" % (str(self.external_ip), str(event.arguments)))
 
         # step 1: join channel
-        self.plugin.log_debug("XDCC - joining channel " + self.channel)
         if irc.client.is_channel(self.channel):
+            self.plugin.log_debug("XDCC - joining channel " + self.channel)
             connection.join(self.channel)
         else:
             self.channel = "#" + self.channel
+            self.plugin.log_debug("XDCC - joining channel " + self.channel)
             if irc.client.is_channel(self.channel):
                 connection.join(self.channel)
             else:
@@ -303,6 +304,13 @@ class XDCCRequest(irc.client.SimpleIRCClient):
         self.pyfile.setStatus("downloading")
         if command['passive']:
             port = self.plugin.config.get("passive_port",0)
+            if '-' in port:
+                random.seed()
+                bounds = port.split('-')
+                port = random.randint(bounds[0], bounds[1])
+            else:
+                port = int(port)
+
             internal_ip = connection.socket.getsockname()[0]
             self.plugin.log_debug("XDCC - entering passive mode, trying to use address %s:%d (external IP: %s)" % (internal_ip, port, self.external_ip))
             # note: depending on the version of python-irc, dcc_listen() takes a port or not, so try with a port first
@@ -348,20 +356,25 @@ class XDCCRequest(irc.client.SimpleIRCClient):
         # acknowledge receit
         self.dcc.send_bytes(struct.pack("!I", self.arrived))
 
+    def name_to_ip(self, name):
+        try:
+            return socket.gethostbyname(name)
+        except Exception:
+            return None
 
     def parse_ip_from_message(self, message):
         self.plugin.log_debug("parsing IP from %s" % message)
-        m = re.search("((?:[\d]+\.){3}[\d]+)", message)
+        m = re.search("@((?:[\d]+\.){3}[\d]+)([^\d ][^ ]*)?", message)
         if m is not None:
-            return m.group(1)
+            if m.group(2):
+                return self.name_to_ip(m.group(1) + m.group(2))
+            else:
+                return m.group(1)
         else:
             nick = self.connection.get_nickname()
             m = re.search(r"%s@([^ ]*)" % nick, message)
             if m is not None and '.' in m.group(1):
-                try:
-                    return socket.gethostbyname(m.group(1))
-                except Exception:
-                    return None
+                return self.name_to_ip(m.group(1))
         return None
 
 
