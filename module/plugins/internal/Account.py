@@ -272,6 +272,9 @@ class Account(Plugin):
 
     @lock
     def getAccountData(self, user, force=False):
+        if user is None:
+            user = self.user
+
         if force:
             self.accounts[user]['plugin'].get_info()
 

@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 
-from ..internal.SimpleCrypter import SimpleCrypter
+from ..internal.DeadCrypter import DeadCrypter
 
 
-class NosvideoCom(SimpleCrypter):
+class NosvideoCom(DeadCrypter):
     __name__ = "NosvideoCom"
     __type__ = "crypter"
-    __version__ = "0.08"
+    __version__ = "0.09"
     __status__ = "testing"
 
     __pattern__ = r'http://(?:www\.)?nosvideo\.com/\?v=\w+'
@@ -18,7 +18,7 @@ class NosvideoCom(SimpleCrypter):
 
     __description__ = """Nosvideo.com decrypter plugin"""
     __license__ = "GPLv3"
-    __authors__ = [("igel", "igelkun@myopera.com")]
+    __authors__ = [("igel", None)]
 
     LINK_PATTERN = r'href="(http://(?:w{3}\.)?nosupload\.com/\?d=\w+)"'
     NAME_PATTERN = r'<[tT]itle>Watch (?P<N>.+?)<'

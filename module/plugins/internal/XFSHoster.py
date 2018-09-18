@@ -40,10 +40,7 @@ class XFSHoster(SimpleHoster):
     NAME_PATTERN = r'(Filename[ ]*:[ ]*</b>(</td><td nowrap>)?|name="fname"[ ]+value="|<[\w^_]+ class="(file)?name">)\s*(?P<N>.+?)(\s*<|")'
     SIZE_PATTERN = r'(Size[ ]*:[ ]*</b>(</td><td>)?|File:.*>|</font>\s*\(|<[\w^_]+ class="size">)\s*(?P<S>[\d.,]+)\s*(?P<U>[\w^_]+)'
 
-    OFFLINE_PATTERN = r'>\s*\w+ (Not Found|file (?:was|has been) (?:removed|deleted)|no longer available)'
-    TEMP_OFFLINE_PATTERN = r'>\s*\w+ server (is in )?(maintenance|maintainance)'
-
-    OFFLINE_PATTERN       = r'(Not Found|file (?:was|has been)?\s*(?:removed|deleted)|no longer available|copyright (?:viola|infr|claim)|did\s*n.t comply(?:\s*\w+)* Terms of Use|File does not exist|file could not be found)'
+    OFFLINE_PATTERN       = r'([nN]ot [Ff]ound|[fF]ile (?:was|has been)?\s*(?:removed|deleted)|no longer available|DMCA|copyright (?:viola|infr|claim)|did\s*n.t comply(?:\s*\w+)* Terms of Use|[Ff]ile (?:does not exist|could not be found))'
     TEMP_OFFLINE_PATTERN  = r'server (?:is in )?maint[eai]*nance'
 
     WAIT_PATTERN          = r'<span [^>]*(?:id|class)="(?:countdown|seconds).*>(\d+)</span>|id="countdown" value=".*?(\d+).*?"|You have to wait ([^<]*)'
@@ -301,8 +298,8 @@ class XFSHoster(SimpleHoster):
 
         if captcha_key:
             self.captcha = recaptcha
-            inputs['recaptcha_response_field'], inputs[
-                'recaptcha_challenge_field'] = recaptcha.challenge(captcha_key)
+            # with ReCaptcha v2, this should be recaptcha_token I think
+            inputs['recaptcha_response_field'], inputs['recaptcha_challenge_field'] = recaptcha.challenge(captcha_key)
             return
 
         solvemedia = SolveMedia(self.pyfile)
