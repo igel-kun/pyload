@@ -242,7 +242,7 @@ $(function() {
     $("#action_play").click(function() {
         $.get("{{'/api/unpauseServer'|url}}", function () {
             $.ajax({
-                method: "POST",
+                method: "post",
                 url: "{{'/json/status'|url}}",
                 async: true,
                 timeout: 3000,
@@ -258,7 +258,7 @@ $(function() {
     $("#action_stop").click(function() {
         $.get("{{'/api/pauseServer'|url}}", function () {
             $.ajax({
-                method: "POST",
+                method: "post",
                 url: "{{'/json/status'|url}}",
                 async: true,
                 timeout: 3000,
@@ -279,7 +279,7 @@ $(function() {
     $("#cap_box #cap_positional").click(submit_positional_captcha);
 
     $.ajax({
-        method: "POST",
+        method:"post",
         url: "{{'/json/status'|url}}",
         async: true,
         timeout: 3000,
@@ -288,7 +288,7 @@ $(function() {
 
     setInterval(function() {
         $.ajax({
-            method: "POST",
+            method:"post",
             url: "{{'/json/status'|url}}",
             async: true,
             timeout: 3000,
