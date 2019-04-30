@@ -255,6 +255,9 @@ class XFSHoster(SimpleHoster):
         else:
             inputs['referer'] = self.pyfile.url
 
+            # FileAl started asking for a captcha before even showing the first "op=" page...
+            self.handle_captcha(inputs)
+
         if self.premium:
             inputs['method_premium'] = "Premium Download"
             inputs.pop('method_free', None)

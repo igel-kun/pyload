@@ -21,6 +21,7 @@ class FileAl(XFSHoster):
     WAIT_PATTERN     = r'countdown.*?seconds.*?(\d+)'
     # "extend" the XFSHoster dict
     SEARCH_FLAGS     = dict(XFSHoster.SEARCH_FLAGS, **({'LINK': re.MULTILINE | re.DOTALL}))
+    RECAPTCHA_PATTERN= r"g-recaptcha.*?sitekey=[\"']([^\"]*)"
 
     def setup(self):
         self.multiDL = self.premium
