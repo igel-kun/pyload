@@ -43,7 +43,7 @@ except ImportError:
 class misc(object):
     __name__ = "misc"
     __type__ = "plugin"
-    __version__ = "0.51"
+    __version__ = "0.53"
     __status__ = "stable"
 
     __pattern__ = r'^unmatchable$'
@@ -125,6 +125,7 @@ class DB(object):
         Delete entry in db
         """
         self.plugin.pyload.db.delStorage(self.plugin.classname, key)
+        self.plugin.pyload.db.commit()
 
 
 class Expose(object):
@@ -380,6 +381,10 @@ def get_console_encoding(enc):
             enc = "cp850"
             # print("WARNING: Windows codepage 65001 (UTF-8) is not supported,
             # used `%s` instead") % enc
+
+        elif enc is None:  #: piped
+            enc = "cp850"
+
     else:
         enc = "utf8"
 

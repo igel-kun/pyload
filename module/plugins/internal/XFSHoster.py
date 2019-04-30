@@ -3,6 +3,7 @@
 import operator
 import random
 import re
+import urlparse
 
 from ..captcha.ReCaptcha import ReCaptcha
 from ..captcha.SolveMedia import SolveMedia
@@ -13,14 +14,13 @@ from .SimpleHoster import SimpleHoster
 class XFSHoster(SimpleHoster):
     __name__ = "XFSHoster"
     __type__ = "hoster"
-    __version__ = "0.80"
+    __version__ = "0.82"
     __status__ = "stable"
 
     __pattern__ = r'^unmatchable$'
     __config__ = [("activated", "bool", "Activated", True),
                   ("use_premium", "bool", "Use premium account if available", True),
-                  ("fallback", "bool",
-                   "Fallback to free download if premium fails", True),
+                  ("fallback", "bool", "Fallback to free download if premium fails", True),
                   ("chk_filesize", "bool", "Check file size", True),
                   ("max_wait", "int", "Reconnect if waiting time is greater than minutes", 10),
                   ("min_size"    , "int" , "Minimum size of files to download", 0)]
@@ -131,6 +131,7 @@ class XFSHoster(SimpleHoster):
             self.log_debug("Couldn't find the link, advancing to next layer...")
             self.data = self.load(pyfile.url,
                               post=next_post,
+                              ref = self.pyfile.url,
                               redirect=False)
 
             if not "op=" in self.last_header.get('location', "op="):
@@ -266,7 +267,7 @@ class XFSHoster(SimpleHoster):
     def handle_captcha(self, inputs):
         m = re.search(self.CAPTCHA_PATTERN, self.data, self.SEARCH_FLAGS.get('CAPTCHA',0))
         if m is not None:
-            captcha_url = m.group(1)
+            captcha_url = urlparse.urljoin(self.pyfile.url, m.group(1))
             inputs['code'] = self.captcha.decrypt(captcha_url)
             return
 
@@ -298,8 +299,7 @@ class XFSHoster(SimpleHoster):
 
         if captcha_key:
             self.captcha = recaptcha
-            # with ReCaptcha v2, this should be recaptcha_token I think
-            inputs['recaptcha_response_field'], inputs['recaptcha_challenge_field'] = recaptcha.challenge(captcha_key)
+            inputs['g-recaptcha-response'], challenge = recaptcha.challenge(captcha_key)
             return
 
         solvemedia = SolveMedia(self.pyfile)

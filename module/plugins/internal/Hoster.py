@@ -33,7 +33,7 @@ if not hasattr(__builtin__.property, "setter"):
 class Hoster(Base):
     __name__ = "Hoster"
     __type__ = "hoster"
-    __version__ = "0.73"
+    __version__ = "0.75"
     __status__ = "stable"
 
     __pattern__ = r'^unmatchable$'
@@ -226,9 +226,13 @@ class Hoster(Base):
             chunks = min(dl_chunks, chunk_limit)
 
         try:
-            newname = self.req.httpDownload(url, file, get, post,
-                                            ref, cookies, chunks, resume,
-                                            self.pyfile.setProgress, disposition)
+            try:
+                newname = self.req.httpDownload(url, file, size=self.pyfile.size, get=get, post=post,
+                                                ref=ref, cookies=cookies, chunks=chunks, resume=resume,
+                                                progressNotify=self.pyfile.setProgress, disposition=disposition)
+            except TypeError:
+                newname = self.req.httpDownload(url, file, get, post, ref, cookies, chunks, resume,
+                                                self.pyfile.setProgress, disposition)
 
         except IOError, e:
             self.log_error(e.message)
@@ -507,11 +511,12 @@ class Hoster(Base):
 
         else:
             # Same file exists but it does not belongs to our pack, add a trailing counter
-            m = re.match(r'(.+?)(?: \((\d+)\))?(\..+)?$', self.pyfile.name)
+            name, ext = os.path.splitext(self.pyfile.name)
+            m = re.match(r'(.+?)(?:\((\d+)\))?$', name)
             dl_n = int(m.group(2) or "0")
 
             while True:
-                name = "%s (%s)%s" % (m.group(1), dl_n + 1, m.group(3) or "")
+                name = "%s (%s)%s" % (m.group(1), dl_n + 1, ext)
                 dl_file = fsjoin(dl_folder, pack_folder, name)
                 if not exists(dl_file):
                     break

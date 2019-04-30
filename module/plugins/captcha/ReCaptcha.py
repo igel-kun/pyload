@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import with_statement
+
 import os
 import re
 import urllib
@@ -27,7 +29,7 @@ except ImportError:
 class ReCaptcha(CaptchaService):
     __name__ = 'ReCaptcha'
     __type__ = 'captcha'
-    __version__ = '0.38'
+    __version__ = '0.39'
     __status__ = 'testing'
 
     __description__ = 'ReCaptcha captcha service plugin'
@@ -339,7 +341,7 @@ class ReCaptcha(CaptchaService):
 
         html = self.pyfile.plugin.load(fallback_url, ref=self.pyfile.url)
 
-        if re.search(r'href="https://support.google.com/recaptcha/\?hl=\w+?#6223828"', html) is not None:
+        if re.search(r'href="https://support.google.com/recaptcha.*"', html) is not None:
             self.log_warning(_("reCAPTCHA noscript is blocked, trying reCAPTCHA interactive"))
             return self._challenge_v2js(key, secure_token=secure_token)
 
