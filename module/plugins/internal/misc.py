@@ -43,7 +43,7 @@ except ImportError:
 class misc(object):
     __name__ = "misc"
     __type__ = "plugin"
-    __version__ = "0.54"
+    __version__ = "0.56"
     __status__ = "stable"
 
     __pattern__ = r'^unmatchable$'
@@ -774,7 +774,14 @@ def search_pattern(pattern, value, flags=0):
     except ValueError:
         reflags = 0
 
-    return re.search(pattern, value, reflags | flags)
+    except TypeError:
+        return None
+
+    try:
+        return re.search(pattern, value, reflags | flags)
+    except TypeError:
+        return None
+
 
 def replace_patterns(value, rules):
     for r in rules:
