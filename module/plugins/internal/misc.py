@@ -634,15 +634,44 @@ def str2int(value):
 
 
 def parse_time(value):
-    if re.search("da(il)?y|today", value):
-        seconds = seconds_to_midnight()
-
+    if type(value) in (list,tuple):
+        # if value is a list, return the first parseable waitmsg
+        for v in value:
+            try:
+                return parse_time(v)
+            except ValueError:
+                pass
+        # if none of the items in the list was parsable, raise the ValueError
+        raise ValueError('cannot parse time from ' + str(value))
     else:
-        _re = re.compile(r'(\d+| (?:this|an?) )\s*(hr|hour|min|sec|)', re.I)
-        seconds = sum((int(v) if v.strip() not in ("this", "a", "an") else 1) *
-                      {'hr': 3600, 'hour': 3600, 'min': 60, 'sec': 1, '': 1}[u.lower()]
-                      for v, u in _re.findall(value))
-    return seconds
+        if re.search("da(il)?y", value):
+            seconds = seconds_to_midnight()
+
+        elif re.search("\d:\d\d", value):
+            # use the HH:MM:SS format, NOTE: when only one ':' is found, it assumes MM:SS
+            factor_arr = [1,60,3600]
+            value = re.sub("[^:0-9]","", value)
+            seconds = sum([u*v for u,v in zip(factor_arr, map(int,value.split(':')[::-1]))])
+
+        else:
+            regex   = re.compile(r'(\d+| (?:this|an?) )\s*(hr|hour|min|sec|)', re.I)
+            seconds = 0
+            for v, u in regex.findall(value):
+                print "parsing time from " + str(v) + " & " + str(u)
+                if v.strip() in ("this", "a", "an"):
+                    # if we have just " this/an/a " without a unit, do not return 1s as parsed time, but default to 1h
+                    if u is '':
+                        return 3600
+                    quant = 1
+                else:
+                    quant = int(v)
+
+                seconds += quant * {'hr': 3600, 'hour': 3600, 'min': 60, 'sec': 1, '': 1}[u.lower()]
+
+        if seconds == 0:
+            raise ValueError('cannot parse time from ' + str(value))
+        else:
+            return seconds
 
 
 def timestamp():
