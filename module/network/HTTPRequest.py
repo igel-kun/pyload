@@ -229,7 +229,7 @@ class HTTPRequest():
                     try:
                         self.c.perform()
                     except pycurl.error, e:
-                        if e.args[0] == E_SSL_CONNECT_ERROR:
+                        if e.args[0] == pycurl.E_SSL_CONNECT_ERROR:
                             self.c.setopt(pycurl.SSLVERSION, 2)
                             self.c.perform()
                         else:
