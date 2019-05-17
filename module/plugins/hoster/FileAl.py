@@ -17,11 +17,12 @@ class FileAl(XFSHoster):
 
 
     PLUGIN_DOMAIN = "file.al"
-    LINK_PATTERN     = r'direct link.*?<a [^>]*href="(.+?)".*?>Click here to download'
+    LINK_PATTERN     = r'direct link.*?<a [^>]*href="(.+?)".*?>Click here to download', re.MULTILINE | re.DOTALL
     WAIT_PATTERN     = r'countdown.*?seconds.*?(\d+)'
     # "extend" the XFSHoster dict
-    SEARCH_FLAGS     = dict(XFSHoster.SEARCH_FLAGS, **({'LINK': re.MULTILINE | re.DOTALL}))
     RECAPTCHA_PATTERN= r"g-recaptcha.*?sitekey=[\"']([^\"]*)"
+    PREMIUM_ONLY_PATTERN  = r'(?:[Pp]remium Users only|can download files up to.*only)'
+    LOCAL_LOCATION = r'check_ip'
 
     def setup(self):
         self.multiDL = self.premium

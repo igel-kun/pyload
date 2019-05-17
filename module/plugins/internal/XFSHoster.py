@@ -46,6 +46,9 @@ class XFSHoster(SimpleHoster):
     PREMIUM_ONLY_PATTERN = r'>This file is available for Premium Users only'
     HAPPY_HOUR_PATTERN = r'>[Hh]appy hour'
     ERROR_PATTERN = r'(?:class=["\']err["\'].*?>|<[Cc]enter><b>|>Error</td>|>\(ERROR:)(?:\s*<.+?>\s*)*(.+?)(?:["\']|<|\))'
+    
+    # forwards matching this pattern are not considered as links but as advancing in the interaction chain
+    LOCAL_LOCATION = None
 
     LINK_LEECH_PATTERN = r'<h2>Download Link</h2>\s*<textarea.*?>(.+?)'
 
@@ -102,8 +105,9 @@ class XFSHoster(SimpleHoster):
                                   redirect=False)
 
             if not "op=" in self.last_header.get('location', "op="):
-                self.link = self.last_header.get('location')
-                break
+                if self.LOCAL_LOCATION is not None and search_pattern(self.LOCAL_LOCATION, self.last_header['location']) is not None:
+                    self.link = self.last_header.get('location')
+                    break
 
             m = search_pattern(self.LINK_PATTERN, self.data, flags=re.S)
             if m is not None:
