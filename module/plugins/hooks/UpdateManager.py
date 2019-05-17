@@ -223,7 +223,9 @@ class UpdateManager(Addon):
     def parse_updates(self, server_data):
         schema = server_data[2].split('|')
 
-        if "BLACKLIST" in server_data:
+        # no thanks, I like to not have you guys control my fork of pyload!
+        #if "BLACKLIST" in server_data:
+        if False:
             blacklist = server_data[server_data.index('BLACKLIST') + 1:]
             updatelist = server_data[3:server_data.index('BLACKLIST')]
         else:
