@@ -780,7 +780,7 @@ def search_pattern(pattern, value, flags=0):
     try:
         return re.search(pattern, value, reflags | flags)
     except TypeError:
-return None
+        return None
 
 
 #@TODO: Remove in 0.4.10 and fix exp in CookieJar.setCookie
