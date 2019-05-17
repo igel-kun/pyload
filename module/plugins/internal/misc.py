@@ -21,8 +21,6 @@ import urllib
 import urlparse
 import xml.sax.saxutils  # @TODO: Remove in 0.4.10
 import zlib
-import tempfile
-import subprocess
 
 try:
     import simplejson as json
@@ -43,7 +41,7 @@ except ImportError:
 class misc(object):
     __name__ = "misc"
     __type__ = "plugin"
-    __version__ = "0.57"
+    __version__ = "0.56"
     __status__ = "stable"
 
     __pattern__ = r'^unmatchable$'
@@ -634,45 +632,17 @@ def str2int(value):
     except:
         return 0
 
+
 def parse_time(value):
-    if type(value) in (list,tuple):
-        # if value is a list, return the first parseable waitmsg
-        for v in value:
-            try:
-                return parse_time(v)
-            except ValueError:
-                pass
-        # if none of the items in the list was parsable, raise the ValueError
-        raise ValueError('cannot parse time from ' + str(value))
+    if re.search("da(il)?y|today", value):
+        seconds = seconds_to_midnight()
+
     else:
-        if re.search("da(il)?y", value):
-            seconds = seconds_to_midnight()
-
-        elif re.search("\d:\d\d", value):
-            # use the HH:MM:SS format, NOTE: when only one ':' is found, it assumes MM:SS
-            factor_arr = [1,60,3600]
-            value = re.sub("[^:0-9]","", value)
-            seconds = sum([u*v for u,v in zip(factor_arr, map(int,value.split(':')[::-1]))])
-
-        else:
-            regex   = re.compile(r'(\d+| (?:this|an?) )\s*(hr|hour|min|sec|)', re.I)
-            seconds = 0
-            for v, u in regex.findall(value):
-                print "parsing time from " + str(v) + " & " + str(u)
-                if v.strip() in ("this", "a", "an"):
-                    # if we have just " this/an/a " without a unit, do not return 1s as parsed time, but default to 1h
-                    if u is '':
-                        return 3600
-                    quant = 1
-                else:
-                    quant = int(v)
-
-                seconds += quant * {'hr': 3600, 'hour': 3600, 'min': 60, 'sec': 1, '': 1}[u.lower()]
-
-        if seconds == 0:
-            raise ValueError('cannot parse time from ' + str(value))
-        else:
-            return seconds
+        _re = re.compile(r'(\d+| (?:this|an?) )\s*(hr|hour|min|sec|)', re.I)
+        seconds = sum((int(v) if v.strip() not in ("this", "a", "an") else 1) *
+                      {'hr': 3600, 'hour': 3600, 'min': 60, 'sec': 1, '': 1}[u.lower()]
+                      for v, u in _re.findall(value))
+    return seconds
 
 
 def timestamp():
@@ -783,6 +753,20 @@ def search_pattern(pattern, value, flags=0):
         return None
 
 
+def replace_patterns(value, rules):
+    for r in rules:
+        try:
+            pattern, repl, flags = r
+
+        except ValueError:
+            pattern, repl = r
+            flags = 0
+
+        value = re.sub(pattern, repl, value, flags)
+
+    return value
+
+
 #@TODO: Remove in 0.4.10 and fix exp in CookieJar.setCookie
 def set_cookie(cj, domain, name, value, path='/', exp=time.time() + 180 * 24 * 3600):
     args = map(encode, [domain, name, value, path]) + [int(exp)]
@@ -823,14 +807,10 @@ def parse_html_tag_attr_value(attr_name, tag):
     return m.group(2) if m else None
 
 
-def parse_html_form(attr_str, html, input_names={}, url=""):
+def parse_html_form(attr_str, html, input_names={}):
     for form in re.finditer(r'(?P<TAG><form[^>]*%s.*?>)(?P<CONTENT>.*?)</?(form|body|html).*?>' % attr_str, html, re.I | re.S):
         inputs = {}
         action = parse_html_tag_attr_value("action", form.group('TAG'))
-
-        # if the url parameter was given, join it with the action value, in order to deal with relative actions
-        if url:
-            action = urlparse.urljoin(url, action)
 
         for inputtag in re.finditer(r'(<(input|textarea).*?>)([^<]*(?=</\2)|)',
                                     re.sub(re.compile(r'<!--.+?-->', re.I | re.S), "", form.group('CONTENT')),
@@ -999,19 +979,3 @@ def move_tree(src, dst, overwrite=False):
             os.rmdir(src_dir)
         except OSError:
             pass
-
-
-def make_oneline(link):
-    """ remove linebreaks from a link """
-    return re.sub('\n.*', r'..', link.strip(), re.MULTILINE | re.DOTALL)
-
-# TODO: use pyexecjs?
-def eval_js_script(script):
-    """ run a javascript program given as parameter and return the output """
-    js = JsEngine()
-    return js.eval(script)
-
-def get_domain(url):
-    return urlparse.urlsplit(url).netloc.split('.')[-2]
-
-
