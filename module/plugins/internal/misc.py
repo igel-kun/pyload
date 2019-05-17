@@ -770,26 +770,17 @@ def seconds_to_midnight(utc=None, strict=False):
 def search_pattern(pattern, value, flags=0):
     try:
         pattern, reflags = pattern
-    except (ValueError, TypeError):
+
+    except ValueError:
         reflags = 0
-    
-    try:
-        return re.search(pattern, value, reflags | flags)
+
     except TypeError:
         return None
 
-def replace_patterns(value, rules):
-    for r in rules:
-        try:
-            pattern, repl, flags = r
-
-        except ValueError:
-            pattern, repl = r
-            flags = 0
-
-        value = re.sub(pattern, repl, value, flags)
-
-    return value
+    try:
+        return re.search(pattern, value, reflags | flags)
+    except TypeError:
+return None
 
 
 #@TODO: Remove in 0.4.10 and fix exp in CookieJar.setCookie
