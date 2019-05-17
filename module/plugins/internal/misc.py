@@ -979,3 +979,18 @@ def move_tree(src, dst, overwrite=False):
             os.rmdir(src_dir)
         except OSError:
             pass
+
+
+def make_oneline(link):
+    """ remove linebreaks from a link """
+    return re.sub('\n.*', r'..', link.strip(), re.MULTILINE | re.DOTALL)
+
+# TODO: use pyexecjs?
+def eval_js_script(script):
+    """ run a javascript program given as parameter and return the output """
+    js = JsEngine()
+    return js.eval(script)
+
+def get_domain(url):
+    return urlparse.urlsplit(url).netloc.split('.')[-2]
+
