@@ -778,18 +778,6 @@ def search_pattern(pattern, value, flags=0):
     except TypeError:
         return None
 
-<<<<<<< HEAD
-    except TypeError:
-        return None
-
-    try:
-        return re.search(pattern, value, reflags | flags)
-    except TypeError:
-        return None
-
-=======
->>>>>>> 92682365f3a94d958037f6ce19f20884d6edc045
-
 def replace_patterns(value, rules):
     for r in rules:
         try:
