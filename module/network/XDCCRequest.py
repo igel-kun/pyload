@@ -183,7 +183,7 @@ class XDCCRequest(irc.client.SimpleIRCClient):
             rules_followed = 0
             message = filter_non_printable(" ".join(event.arguments))
             for rule in self.plugin.PRIVMSG_RULES:
-                if re.search(rule[0], event.source) is not None:
+                if re.search(rule[0], event.source, re.IGNORECASE) is not None:
                     command = re.sub(rule[1], rule[2], message, 0, re.IGNORECASE)
                     if command != message:
                         self.plugin.log_debug('sending "%s" as result of privmsg rules' % str(command))
@@ -333,6 +333,7 @@ class XDCCRequest(irc.client.SimpleIRCClient):
             self.plugin.log_debug("XDCC - connecting to %s:%d" % (command['address'], command['port']))
             self.dcc = self.dcc_connect(command['address'], command['port'], "raw")
         
+        self.plugin.log_debug('starting download...')
         self.plugin.pyload.hookManager.dispatchEvent("download_start", self.pyfile, "XDCC", self.filename)
 
 
