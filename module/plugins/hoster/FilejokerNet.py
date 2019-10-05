@@ -30,8 +30,9 @@ class FilejokerNet(XFSHoster):
 
     WAIT_PATTERN = r'wait (?:<span id="count" class="alert-success">)?([\w ]+?)(?:</span> seconds</p>| until the next download| to download)', re.IGNORECASE
     ERROR_PATTERN = r'Wrong Captcha|Session expired'
-
     PREMIUM_ONLY_PATTERN = 'Free Members can download files no bigger'
+
+    DL_LIMIT_PATTERN = r'Wait [\w ]+? to download for free.'
 
     INFO_PATTERN = r'<div class="name-size">(?P<N>.+?) <small>\((?P<S>[\d.,]+) (?P<U>[\w^_]+)\)</small></div>'
     SIZE_REPLACEMENTS = [('Kb', 'KB'), ('Mb', 'MB'), ('Gb', 'GB')]

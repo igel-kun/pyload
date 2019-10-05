@@ -12,7 +12,7 @@ from ..internal.misc import json
 class FileboomMe(SimpleHoster):
     __name__ = "FileboomMe"
     __type__ = "hoster"
-    __version__ = "0.09"
+    __version__ = "0.11"
     __status__ = "testing"
 
     __pattern__ = r'https?://f(?:ile)?boom\.me/file/(?P<ID>\w+)'
@@ -121,10 +121,25 @@ class FileboomMe(SimpleHoster):
                                               captcha_response=None)
 
                 if json_data['code'] == 200:
-                    self.download(json_data['url'], fixurl=False)
+                    self.download(json_data['url'])
 
             else:
                 raise
 
         else:
-            self.download(json_data['url'], fixurl=False)
+            self.download(json_data['url'])
+
+    def handle_premium(self, pyfile):
+        file_id = self.info['pattern']['ID']
+
+        if self.info['access'] == "private":
+            self.fail(_("This is a private file"))
+
+        json_data = self.api_response("GetUrl",
+                                      file_id=file_id,
+                                      free_download_key=None,
+                                      captcha_challenge=None,
+                                      captcha_response=None,
+                                      auth_token=self.account.info['data']['token'])
+
+        self.link = json_data['url']
