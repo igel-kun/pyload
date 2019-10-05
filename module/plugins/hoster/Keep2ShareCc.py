@@ -110,6 +110,7 @@ class Keep2ShareCc(SimpleHoster):
                                                       captcha_response=captcha_response)
 
                     except BadHeader, e:
+                        self.log_debug("error: %s" % str(e.content))
                         if e.code == 406:
                             json_data = json.loads(e.content)
                             if json_data['errorCode'] == 31:  #: ERROR_CAPTCHA_INVALID
