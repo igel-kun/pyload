@@ -126,19 +126,17 @@ class XFSAccount(Account):
                         unit = self.TRAFFIC_LEFT_UNIT
 
                     else:
-                        unit = ""
+                        unit = None
 
-                    trafficleft = self.parse_traffic(size + unit)
+                    trafficleft = self.parse_traffic(size, unit)
 
             except Exception, e:
                 self.log_error(e)
         else:
             self.log_debug("TRAFFIC LEFT PATTERN not found")
 
-        leech = [
-            m.groupdict() for m in re.finditer(
-                self.LEECH_TRAFFIC_PATTERN,
-                self.data)]
+        leech = [m.groupdict()
+                 for m in re.finditer(self.LEECH_TRAFFIC_PATTERN, self.data)]
         if leech:
             leechtraffic = 0
             try:
