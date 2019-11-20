@@ -54,6 +54,7 @@ class XFSHoster(SimpleHoster):
 
     CAPTCHA_PATTERN = r'(https?://[^"\']+?/captchas?/[^"\']+)'
     CAPTCHA_BLOCK_PATTERN = r'>Enter code.*?<div.*?>(.+?)</div>'
+    PRE_CAPTCHA_PATTERN = None
     RECAPTCHA_PATTERN = None
     SOLVEMEDIA_PATTERN = None
 
@@ -90,6 +91,7 @@ class XFSHoster(SimpleHoster):
 
     def handle_free(self, pyfile):
         for i in range(1, 6):
+            self.handle_pre_captcha(pyfile)
             self.log_debug("Getting download link #%d..." % i)
 
             self.check_errors()
@@ -228,6 +230,18 @@ class XFSHoster(SimpleHoster):
             inputs.pop('method_premium', None)
 
         return inputs
+
+    def handle_pre_captcha(self, pyfile):
+        m = search_pattern(self.PRE_CAPTCHA_PATTERN, self.data)
+        if m is not None:
+            self.log_debug('pre-load captcha detected...')
+            action, inputs = self.parse_html_form()
+            self.handle_captcha(inputs)
+            self.data = self.load(pyfile.url,
+                                  post=inputs,
+                                  ref=self.pyfile.url)
+            self.log_debug('=== received: ===\n' + self.data)
+
 
     def handle_captcha(self, inputs):
         m = search_pattern(self.CAPTCHA_PATTERN, self.data)
