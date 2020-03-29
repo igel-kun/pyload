@@ -198,17 +198,17 @@ class Plugin(object):
         #@TODO: Move to network in 0.4.10
         if not redirect:
             # @NOTE: req can be a HTTPRequest or a Browser object
-            http_req.c.setopt(http_req.curl.FOLLOWLOCATION, 0)
+            http_req.c.setopt(http_req.c.FOLLOWLOCATION, 0)
         else:
-            http_req.c.setopt(http_req.curl.FOLLOWLOCATION, 1)
+            http_req.c.setopt(http_req.c.FOLLOWLOCATION, 1)
             if redir_post:
-                http_req.c.setopt(http_req.curl.POSTREDIR, http_req.curl.REDIR_POST_ALL)
+                http_req.c.setopt(http_req.c.POSTREDIR, http_req.c.REDIR_POST_ALL)
             else:
-                http_req.c.setopt(http_req.curl.POSTREDIR, 0)
+                http_req.c.setopt(http_req.c.POSTREDIR, 0)
 
             if type(redirect) is int:
                 # @NOTE: req can be a HTTPRequest or a Browser object
-                http_req.c.setopt(http_req.curl.MAXREDIRS, redirect)
+                http_req.c.setopt(http_req.c.MAXREDIRS, redirect)
 
         #@TODO: Move to network in 0.4.10
         if isinstance(ref, basestring):
@@ -227,7 +227,7 @@ class Plugin(object):
         #@TODO: Move to network in 0.4.10
         if not redirect:
             # @NOTE: req can be a HTTPRequest or a Browser object
-            http_req.c.setopt(http_req.curl.FOLLOWLOCATION, 1)
+            http_req.c.setopt(http_req.c.FOLLOWLOCATION, 1)
 
         elif type(redirect) is int:
             maxredirs = int(
@@ -236,7 +236,7 @@ class Plugin(object):
                     "maxredirs",
                     "plugin")) or 5  # @TODO: Remove `int` in 0.4.10
             # @NOTE: req can be a HTTPRequest or a Browser object
-            http_req.c.setopt(http_req.curl.MAXREDIRS, maxredirs)
+            http_req.c.setopt(http_req.c.MAXREDIRS, maxredirs)
 
         #@TODO: Move to network in 0.4.10
         if decode:
