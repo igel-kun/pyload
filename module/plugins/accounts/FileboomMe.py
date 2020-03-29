@@ -6,7 +6,7 @@ from ..accounts.Keep2ShareCc import Keep2ShareCc
 class FileboomMe(Keep2ShareCc):
     __name__ = "FileboomMe"
     __type__ = "account"
-    __version__ = "0.01"
+    __version__ = "0.02"
     __status__ = "testing"
 
     __description__ = """Fileboom.me hoster plugin"""

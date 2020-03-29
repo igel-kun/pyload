@@ -6,7 +6,7 @@ import os
 import subprocess
 import tempfile
 
-from .misc import encode, fsjoin
+from .misc import Popen, fs_encode, fsjoin
 from .Plugin import Plugin
 
 try:
@@ -15,13 +15,11 @@ try:
 except ImportError:
     import Image
 
-# import tempfile
-
 
 class OCR(Plugin):
     __name__ = "OCR"
     __type__ = "ocr"
-    __version__ = "0.26"
+    __version__ = "0.28"
     __status__ = "stable"
 
     __description__ = """OCR base plugin"""
@@ -33,10 +31,9 @@ class OCR(Plugin):
         self.pyfile = pyfile
         self.init()
 
-    def _log(self, level, plugintype, pluginname, messages):
+    def _log(self, level, plugintype, pluginname, messages, tbframe=None):
         messages = (self.__name__,) + messages
-        return self.pyfile.plugin._log(
-            level, plugintype, self.pyfile.plugin.__name__, messages)
+        return self.pyfile.plugin._log(level, plugintype, self.pyfile.plugin.__name__, messages, tbframe=tbframe)
 
     def load_image(self, image):
         self.img = Image.open(image)
@@ -59,30 +56,32 @@ class OCR(Plugin):
         call = (command,) + args
         self.log_debug("EXECUTE " + " ".join(call))
 
-        call = map(encode, call)
-        popen = subprocess.Popen(
+        call = map(fs_encode, call)
+        p = Popen(
             call,
             bufsize=-1,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
-        popen.wait()
+        p.wait()
 
-        output = popen.stdout.read() + " | " + popen.stderr.read()
+        output = p.stdout.read() + " | " + p.stderr.read()
 
-        popen.stdout.close()
-        popen.stderr.close()
+        p.stdout.close()
+        p.stderr.close()
 
-        self.log_debug(
-            "Tesseract ReturnCode %d" %
-            popen.returncode,
-            "Output: %s" %
-            output)
+        self.log_debug("Tesseract ReturnCode %d" % p.returncode,
+                       "Output: %s" % output)
 
     def run_tesser(self, subset=False, digits=True,
                    lowercase=True, uppercase=True, pagesegmode=None):
         try:
-            tmpTif = tempfile.NamedTemporaryFile(suffix=".tif", delete=False)
-            tmpTxt = tempfile.NamedTemporaryFile(suffix=".txt", delete=False)
+            tmpTif = open(fsjoin("tmp", "tmpTif_%s.tif" % self.classname), "wb")
+            tmpTif.close()
+
+            # tmpTxt = tempfile.NamedTemporaryFile(suffix=".txt")
+            tmpTxt = open(fsjoin("tmp", "tmpTxt_%s.txt" % self.classname), "wb")
+            tmpTxt.close()
+
         except IOError, e:
             self.log_error(e)
             return
@@ -95,13 +94,8 @@ class OCR(Plugin):
         else:
             command = "tesseract"
 
-        args = [
-            os.path.abspath(
-                tmpTif.name),
-            os.path.abspath(
-                tmpTxt.name).replace(
-                ".txt",
-                "")]
+        args = [os.path.abspath(tmpTif.name),
+                os.path.abspath(tmpTxt.name).replace(".txt", "")]
 
         if pagesegmode:
             args.extend(["-psm", str(pagesegmode)])

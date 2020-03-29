@@ -6,14 +6,43 @@ import re
 import subprocess
 import time
 import urllib
+import urlparse
 from xml.dom.minidom import parseString as parse_xml
 
 from module.network.CookieJar import CookieJar
 from module.network.HTTPRequest import HTTPRequest
 
 from ..internal.Hoster import Hoster
-from ..internal.misc import exists, isexecutable, json, reduce, renice, replace_patterns, which
+from ..internal.misc import (
+    Popen, decode, exists, fs_encode, fsjoin, isexecutable, json, reduce, renice, replace_patterns, safename,
+    uniqify, which)
 from ..internal.Plugin import Abort, Skip
+
+
+def try_get(data, *path):
+    def get_one(src, what):
+        if isinstance(src, dict) and isinstance(what, basestring):
+            return src.get(what, None)
+        elif isinstance(src, list) and type(what) is int:
+            try:
+                return src[what]
+            except IndexError:
+                return None
+        elif callable(what):
+            try:
+                return what(src)
+            except Exception:
+                return None
+        else:
+            return None
+
+    res = get_one(data, path[0])
+    for item in path[1:]:
+        if res is None:
+            break
+        res = get_one(res, item)
+
+    return res
 
 
 class BIGHTTPRequest(HTTPRequest):
@@ -82,9 +111,9 @@ class Ffmpeg(object):
 
             cmd = which(ffmpeg) or ffmpeg
 
-            p = subprocess.Popen([cmd, "-version"],
-                                 stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE)
+            p = Popen([cmd, "-version"],
+                      stdout=subprocess.PIPE,
+                      stderr=subprocess.PIPE)
             out, err = (_r.strip() if _r else "" for _r in p.communicate())
         except OSError:
             return False
@@ -136,7 +165,7 @@ class Ffmpeg(object):
                      "-sub_charenc", "utf8"])
 
         call = [self.CMD] + args + [self.output_filename]
-        p = subprocess.Popen(
+        p = Popen(
             call,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
@@ -206,7 +235,7 @@ class Ffmpeg(object):
 class YoutubeCom(Hoster):
     __name__ = "YoutubeCom"
     __type__ = "hoster"
-    __version__ = "0.72"
+    __version__ = "0.76"
     __status__ = "testing"
 
     __pattern__ = r'https?://(?:[^/]*\.)?(?:youtu\.be/|youtube\.com/watch\?(?:.*&)?v=)[\w\-]+'
@@ -237,9 +266,6 @@ class YoutubeCom(Hoster):
                    ("GammaC0de", "nitzo2001[AT]yahoo[DOT]com")]
 
     URL_REPLACEMENTS = [(r'youtu\.be/', 'youtube.com/watch?v=')]
-
-    #: Invalid characters that must be removed from the file name
-    invalid_chars = u'\u2605:?><"|\\'
 
     #: name, width, height, quality ranking, 3D, type
     formats = {
@@ -327,6 +353,7 @@ class YoutubeCom(Hoster):
 
             m = re.search(r'\b[cs]\s*&&\s*[adf]\.set\([^,]+\s*,\s*encodeURIComponent\s*\(\s*(?P<sig>[a-zA-Z0-9$]+)\(', player_data) or \
                 re.search(r'\b[a-zA-Z0-9]+\s*&&\s*[a-zA-Z0-9]+\.set\([^,]+\s*,\s*encodeURIComponent\s*\(\s*(?P<sig>[a-zA-Z0-9$]+)\(', player_data) or \
+                re.search(r'\b(?P<sig>[a-zA-Z0-9$]{2})\s*=\s*function\(\s*a\s*\)\s*{\s*a\s*=\s*a\.split\(\s*""\s*\)', player_data) or \
                 re.search(r'(?P<sig>[a-zA-Z0-9$]+)\s*=\s*function\(\s*a\s*\)\s*{\s*a\s*=\s*a\.split\(\s*""\s*\)', player_data) or \
                 re.search(r'\.sig\|\|(?P<sig>[a-zA-Z0-9$]+)\(', player_data) or \
                 re.search(r'\bc\s*&&\s*d\.set\([^,]+\s*,\s*\([^)]*\)\s*\(\s*(?P<sig>[a-zA-Z0-9$]+)\(', player_data) or \
@@ -438,7 +465,7 @@ class YoutubeCom(Hoster):
         self.pyfile.name = self.file_name + file_suffix
 
         try:
-            filename = self.download(url, disposition=False)
+            filename = self.download(url, disposition=False, resume=False)
         except Skip, e:
             filename = os.path.join(self.pyload.config.get("general", "download_folder"),
                                     self.pyfile.package().folder,
@@ -575,9 +602,9 @@ class YoutubeCom(Hoster):
                 # Download only listed subtitles (`subs_dl_langs` config gives the priority)
                 for _lang in subs_dl_langs:
                     if _lang in subtitles_urls:
-                        srt_filename =  os.path.join(self.pyload.config.get("general", "download_folder"),
-                                                     self.pyfile.package().folder,
-                                                     os.path.splitext(self.file_name)[0] + "." + _lang + ".srt")
+                        srt_filename = fsjoin(self.pyload.config.get("general", "download_folder"),
+                                              self.pyfile.package().folder,
+                                              os.path.splitext(self.file_name)[0] + "." + _lang + ".srt")
 
                         if self.pyload.config.get('download', 'skip_existing') and \
                                 exists(srt_filename) and os.stat(srt_filename).st_size != 0:
@@ -599,9 +626,9 @@ class YoutubeCom(Hoster):
             else:
                 # Download any available subtitle
                 for _subtitle in subtitles_urls.items():
-                    srt_filename = os.path.join(self.pyload.config.get("general", "download_folder"),
-                                                self.pyfile.package().folder,
-                                                os.path.splitext(self.file_name)[0] + "." + _subtitle[0] + ".srt")
+                    srt_filename = fsjoin(self.pyload.config.get("general", "download_folder"),
+                                          self.pyfile.package().folder,
+                                          os.path.splitext(self.file_name)[0] + "." + _subtitle[0] + ".srt")
 
                     if self.pyload.config.get('download', 'skip_existing') and \
                         exists(srt_filename) and os.stat(srt_filename).st_size != 0:
@@ -731,10 +758,10 @@ class YoutubeCom(Hoster):
 
         self.player_config = json.loads(m.group(1))
 
-        self.ffmpeg = Ffmpeg(self.config.get('priority') ,self)
+        self.ffmpeg = Ffmpeg(self.config.get('priority'), self)
 
         #: Set file name
-        self.file_name = json.loads(self.player_config['args']['player_response'])['videoDetails']['title']
+        self.file_name = decode(json.loads(self.player_config['args']['player_response'])['videoDetails']['title'])
 
         #: Check for start time
         self.start_time = (0, 0)
@@ -744,30 +771,47 @@ class YoutubeCom(Hoster):
             self.file_name += " (starting at %sm%ss)" % (self.start_time[0], self.start_time[1])
 
         #: Cleaning invalid characters from the file name
-        self.file_name = self.file_name.encode('ascii', 'replace')
-        for c in self.invalid_chars:
-            self.file_name = self.file_name.replace(c, '_')
+        self.file_name = safename(self.file_name)
 
         #: Parse available streams
-        streams_keys = ['url_encoded_fmt_stream_map']
-        if 'adaptive_fmts' in self.player_config['args']:
-            streams_keys.append('adaptive_fmts')
-
         self.streams = []
-        for streams_key in streams_keys:
-            streams = self.player_config['args'][streams_key]
-            streams = [_s.split('&') for _s in streams.split(',')]
-            streams = [dict((_x.split('=', 1)) for _x in _s) for _s in streams]
-            streams = [(int(_s['itag']),
-                        urllib.unquote(_s['url']),
-                        _s.get('s', _s.get('sig', None)),
-                        True if 's' in _s else False,
-                        _s.get('sp', "signature"))
-                       for _s in streams]
-            streams = [(_s[0], _s[1], _s[2] and urllib.unquote(_s[2]), _s[3], _s[4])
-                       for _s in streams]
 
-            self.streams += streams
+        for path in [('args', 'url_encoded_fmt_stream_map'),
+                     ('args', 'adaptive_fmts')]:
+            item = try_get(self.player_config, *path)
+            if item is not None:
+                streams = [urlparse.parse_qs(_s) for _s in item.split(',')]
+                streams = [dict((k, v[0]) for k,v in _d.items()) for _d in streams]
+                self.streams.extend(streams)
+
+        player_response = json.loads(self.player_config['args']['player_response'])
+        self.streams.extend(try_get(player_response, 'streamingData', 'formats') or [])
+        self.streams.extend(try_get(player_response, 'streamingData', 'adaptiveFormats') or [])
+
+        streams = self.streams
+        self.streams = []
+        for _s in streams:
+            itag = int(_s['itag'])
+            url_data = _s
+            url = _s.get('url', None)
+            if url is None:
+                cipher = _s.get('cipher', None)
+                if cipher is None:
+                    continue
+
+                url_data = urlparse.parse_qs(cipher)
+                url_data = dict((k, v[0]) for k,v in url_data.items())
+                url = url_data.get('url', None)
+                if url is None:
+                    continue
+
+            self.streams.append((itag,
+                                 url,
+                                 url_data.get('s', url_data.get('sig', None)),
+                                 's' in url_data,
+                                 url_data.get('sp', "signature")))
+
+        self.streams = uniqify(self.streams)
 
         self.log_debug("AVAILABLE STREAMS: %s" % [_s[0] for _s in self.streams])
 
@@ -787,8 +831,8 @@ class YoutubeCom(Hoster):
                                            subtitles_files)
 
         #: Everything is finished and final name can be set
-        pyfile.name = os.path.basename(final_filename)
-        pyfile.size = os.path.getsize(final_filename)
+        pyfile.name = os.path.basename(fs_encode(final_filename))
+        pyfile.size = os.path.getsize(fs_encode(final_filename))
         self.last_download = final_filename
 
 

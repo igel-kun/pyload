@@ -18,9 +18,10 @@
     @author: sebnapi
     @author: RaNaN
     @author: mkaay
-    @version: v0.4.9
+    @author: GammaC0de
+    @version: v0.4.20
 """
-CURRENT_VERSION = '0.4.9'
+CURRENT_VERSION = '0.4.20'
 
 import __builtin__
 
@@ -611,9 +612,7 @@ class Core(object):
             self.hookManager.coreExiting()
 
         except:
-            if self.debug:
-                print_exc()
-            self.log.info(_("error while shutting down"))
+            self.log.info(_("error while shutting down"), exc_info=self.debug)
 
         finally:
             self.files.syncSave()

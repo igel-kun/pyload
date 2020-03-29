@@ -13,7 +13,7 @@ from ..internal.misc import json, parse_html_form, timestamp
 class UlozTo(Account):
     __name__ = "UlozTo"
     __type__ = "account"
-    __version__ = "0.33"
+    __version__ = "0.35"
     __status__ = "testing"
 
     __description__ = """Uloz.to account plugin"""
@@ -26,18 +26,7 @@ class UlozTo(Account):
     INFO_PATTERN = r'title="credit in use"><\/span>\s*([\d.,]+) ([\w^_]+)\s*<\/td>\s*<td class="right">([\d.]+)<\/td>'
 
     def grab_info(self, user, password, data):
-        self.req.http.c.setopt(pycurl.HTTPHEADER, ["X-Requested-With: XMLHttpRequest"])
-        try:
-            html = json.loads(self.load("https://ulozto.net/statistiky",
-                                        get={'do': "overviewPaymentsView-ajaxLoad",
-                                             '_': timestamp()}
-                              ))['snippets']['snippet-overviewPaymentsView-']
-
-        except (ValueError, KeyError):
-            self.log_error(_("Unable to retrieve account information, unexpected response"))
-            return {'validuntil': None,
-                    'trafficleft': None,
-                    'premium': False}
+        html = self.load("https://ulozto.net/platby")
 
         if ">You don't have any credit at the moment.<" in html:  #: Free account
             validuntil = -1
@@ -62,8 +51,8 @@ class UlozTo(Account):
                 'premium': premium}
 
     def signin(self, user, password, data):
-        html = self.load('https://ulozto.net/?do=web-login')
-        if ">Log out<" in html:
+        html = self.load('https://ulozto.net/login')
+        if 'Log out' in html:
             self.skip_login()
 
         url, inputs = parse_html_form('action="/login"', html)
@@ -75,5 +64,5 @@ class UlozTo(Account):
 
         html = self.load(urlparse.urljoin("https://ulozto.net/", url),
                          post=inputs)
-        if not '>Log out<' in html:
+        if 'Log out' not in html:
             self.fail_login()

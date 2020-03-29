@@ -13,7 +13,7 @@ class XDCC(Hoster):
     __version__ = "99"
     __status__  = "testing"
 
-    __pattern__ = r'(?:xdcc|irc)(?P<SSL>s?)://(?P<SERVER>.*?)/#?(?P<CHAN>.*?)/(?P<BOT>.*?)/#?(?P<PACK>\d+)/?'
+    __pattern__ = r'(?:xdcc|irc)://(?P<SERVER>.*?)/#?(?P<CHAN>.*?)/(?P<BOT>.*?)/#?(?P<PACK>\d+)/?'
 
     # mimic IRSSI v0.8.6 by default
     __config__  = [("nick",          "str", "Nickname",           "pyload"               ),
@@ -29,7 +29,7 @@ class XDCC(Hoster):
                        ("igel", "")]
 
     # NETWORK rules are commands to send to the server on connection, depending on the server name
-    NETWORK_RULES = [(r'abjects', ['JOIN #mg-chat']), (r'abandoned-irc', ['JOIN #zw-chat']), (r'scenep2p.net', ['JOIN #THE.LOUNGE'])]
+    NETWORK_RULES = [(r'abjects', ['JOIN #mg-chat']), (r'abandoned-irc', ['JOIN #zw-chat'])]
     # PRIVMSG rules are rules to turn private messages from anyone whose name matches rule[0] into commands using re.sub(rule[1], rule[2])
     PRIVMSG_RULES = [(r"(?:@staff|Zombies)", r".*you must /?join .*?(#[^ ]*) .*to download.*", r"JOIN \1")]
     # ERROR patterns are patterns that, when received as a private notice, cause the download to fail
@@ -39,7 +39,7 @@ class XDCC(Hoster):
         # TODO: find a way to do multiDL for different servers
         self.multiDL = False
 
-    def parse_server(self, server, ssl):
+    def parse_server(self, server):
         temp = server.split(':')
         server = temp[0]
         if len(temp) == 2:
@@ -49,7 +49,7 @@ class XDCC(Hoster):
                 self.fail(_("Error: Erroneous port: %s." % temp[1]))
             return (server, port)
         elif len(temp) == 1:
-            return (server, 6667 if not ssl else 6697)
+            return (server, 6667)
         else:
             self.fail(_("Invalid hostname for IRC Server: %s") % server)
 
@@ -64,18 +64,17 @@ class XDCC(Hoster):
         dl_filename = safejoin(dl_dirname, dl_basename)
 
         try:
-            ssl, server, chan, bot, pack = re.match(self.__pattern__, pyfile.url).groups()
-            ssl           = False if not ssl else True
+            server, chan, bot, pack = re.match(self.__pattern__, pyfile.url).groups()
             nick          = self.config.get('nick')
             password      = self.config.get('password')
             realname      = self.config.get('realname')
             # split the port from the server
-            server,port = self.parse_server(server, ssl)
+            server,port = self.parse_server(server)
         except Exception:
             self.fail(_("malformed XDCC URI: %s - expected xdcc://server[:port]/chan/bot/pack" % pyfile.url))
 
         self.req = XDCCRequest(self, pyfile)
-        self.req.download(server, port, ssl, chan, bot, pack, dl_filename, True, nick, password, realname)
+        self.req.download(server, port, chan, bot, pack, dl_filename, True, nick, password, realname)
 
 
 

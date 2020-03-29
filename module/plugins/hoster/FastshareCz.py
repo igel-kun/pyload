@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import re
-import urlparse
 
 from ..internal.SimpleHoster import SimpleHoster
 
@@ -34,7 +33,7 @@ class FastshareCz(SimpleHoster):
     TEMP_OFFLINE_PATTERN = r'[^\w](503\s|maint(e|ai)nance|temp([.-]|orarily))', re.IGNORECASE
     OFFLINE_PATTERN = r'>(The file has been deleted|Requested page not found|This file is no longer available)'
 
-    LINK_FREE_PATTERN = r'href="(.+?)" id=free-trigger>'
+    LINK_FREE_PATTERN = r'<form .*target="iframe_dwn" .*action=([^>]+)'
     LINK_PREMIUM_PATTERN = r'(https?://\w+\.fastshare\.cz/download\.php\?id=\d+&)'
 
     SLOT_ERROR = "> 100% of FREE slots are full"
@@ -57,23 +56,28 @@ class FastshareCz(SimpleHoster):
         if m is None:
             self.error(_("LINK_FREE_PATTERN not found"))
 
-        self.link = urlparse.urljoin("https://fastshare.cz", m.group(1))
-        baseurl = "https://fastshare.cz"
+        self.link = self.fixurl(m.group(1))
 
     def check_download(self):
         check = self.scan_download({
-            'paralell-dl': re.compile(r"<title>FastShare.cz</title>|<script>alert\('Pres FREE muzete stahovat jen jeden soubor najednou.'\)"),
+            'paralell-dl': re.compile(r"<title>FastShare.cz</title>|<title>FastShare.cz</title>|<script.*>alert\('Despite FREE can download only one file at a time.'\)"),
             'wrong captcha': re.compile(r'Download for FREE'),
             'credit': re.compile(self.CREDIT_ERROR)
         })
 
         if check == "paralell-dl":
+            self.log_warning(_("Paralell download"))
+            self.remove(self.last_download)
             self.retry(6, 10 * 60, _("Paralell download"))
 
         elif check == "wrong captcha":
+            self.log_warning(_("Wrong captcha"))
+            self.remove(self.last_download)
             self.retry_captcha()
 
         elif check == "credit":
+            self.log_warning(_("Out of credit"))
+            self.remove(self.last_download)
             self.restart(premium=False)
 
         return SimpleHoster.check_download(self)
