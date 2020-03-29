@@ -24,6 +24,7 @@ import shlex
 import random   # to get a random nick in case our nickname is already in use
 import time
 import socket # for exceptions and DNS
+import ssl # for SSL connections 
 
 # we're going to use jaraco's python-irc library found
 # here: https://github.com/jaraco/irc
@@ -72,7 +73,7 @@ class XDCCRequest(irc.client.SimpleIRCClient):
         self.arrived = 0
 
 
-    def download(self, server, port, channel, botname, request, filename, disposition = True,
+    def download(self, server, port, use_ssl, channel, botname, request, filename, disposition = True,
             nick = "pyload", password = None, realname = None):
         self.channel = channel
         self.botname = botname
@@ -80,10 +81,16 @@ class XDCCRequest(irc.client.SimpleIRCClient):
         self.filename = filename
         self.disposition = disposition
 
-        self.plugin.log_debug('connecting to %s:%d as %s' %(server, port, nick))
         self.pyfile.setStatus("processing")
-        try:
-            self.connect(server, port, nick, password, nick, realname)
+        if use_ssl:
+            self.plugin.log_debug('using SSL')
+            conn_fac = irc.connection.Factory(wrapper=ssl.wrap_socket)
+        else:
+            conn_fac = irc.connection.Factory()
+
+        try:            
+            self.plugin.log_debug('connecting to %s:%d as %s' %(server, port, nick))
+            self.connect(server, port, nick, password, nick, realname, connect_factory = conn_fac)
             # replace non-UTF8 characters, otherwise, the connection may crash on receiving non-UTF8 chars
             self.connection.buffer.errors = 'replace'
             self.start()
@@ -114,7 +121,7 @@ class XDCCRequest(irc.client.SimpleIRCClient):
         if self.pyfile.hasStatus('waiting'):
             self.plugin.log_debug("XDCC - requesting %s from %s by CTCP" % (self.request, self.botname))
             connection.ctcp("XDCC", self.botname, "SEND " + self.request)
-            self.ircobj.execute_delayed(30, self.quit_if_stuck, ["waiting", "Bot is ignoring our requests"])
+            self.ircobj.execute_delayed(61, self.quit_if_stuck, ["waiting", "Bot is ignoring our requests"])
 
 
     def request_via_privmsg(self, connection):
@@ -126,8 +133,8 @@ class XDCCRequest(irc.client.SimpleIRCClient):
         if self.pyfile.hasStatus("processing"):
             self.pyfile.setStatus("waiting")
             self.request_via_privmsg(connection)
-            # schedule to repeat the request via CTCP in 30s as some bots don't respond to PRIVMSGs
-            self.ircobj.execute_delayed(30, self.request_via_ctcp, [connection])
+            # schedule to repeat the request via CTCP in 61s as some bots don't respond to PRIVMSGs
+            self.ircobj.execute_delayed(61, self.request_via_ctcp, [connection])
 
 
     # remove all scheduled occurances of function
@@ -137,7 +144,9 @@ class XDCCRequest(irc.client.SimpleIRCClient):
 
 
     def on_join(self, connection, event):
-        self.make_request(connection)
+        self.ircobj.execute_delayed(61, self.make_request, [connection])
+        # delay the request by 1min after joining
+        # self.make_request(connection)
 
 
     # try joining the given channel, prepend a '#' if neccessary
@@ -189,10 +198,10 @@ class XDCCRequest(irc.client.SimpleIRCClient):
                         self.plugin.log_debug('sending "%s" as result of privmsg rules' % str(command))
                         self.connection.send_raw(command)
                         rules_followed += 1
-            # if any rules were implemented, give 20s to let it sink in and retry the request
+            # if any rules were implemented, give 61s to let it sink in and retry the request
             if rules_followed > 0:
-                self.plugin.log_debug('waiting 20s for our actions to take effect, so we can rerequest the file')
-                self.ircobj.execute_delayed(20, self.make_request, [connection])
+                self.plugin.log_debug('waiting 60s for our actions to take effect, so we can rerequest the file')
+                self.ircobj.execute_delayed(61, self.make_request, [connection])
 
 
     def on_privnotice(self, connection, event):
@@ -302,9 +311,9 @@ class XDCCRequest(irc.client.SimpleIRCClient):
 
         self.pyfile.setStatus("downloading")
         if command['passive']:
-            port = self.plugin.config.get("passive_port",0)
+            port = int(self.plugin.config.get("passive_port",0))
             internal_ip = connection.socket.getsockname()[0]
-            self.plugin.log_debug("XDCC - entering passive mode, trying to use address %s:%d (external IP: %s)" % (internal_ip, port, self.external_ip))
+            self.plugin.log_debug("XDCC - entering passive mode, trying to use address %s:%s (external IP: %s)" % (internal_ip, str(port), self.external_ip))
             # note: depending on the version of python-irc, dcc_listen() takes a port or not, so try with a port first
             # in order to allow users behind firewalls or routers to have a constant port forwarded
             try:
@@ -326,11 +335,13 @@ class XDCCRequest(irc.client.SimpleIRCClient):
                 except socket.error as x:
                     raise DCCConnectionError("Couldn't bind socket: %s" % x)
 
-            self.plugin.log_debug("XDCC - listening on %s:%d for incoming DCC from %s" % (self.dcc.localaddress, self.dcc.localport, command['address']))
-            connection.ctcp(command['command'], self.botname, 'SEND "%s" %s %d %d %s' % (command['filename'], irc.client.ip_quad_to_numstr(self.external_ip), self.dcc.localport, command['size'], command['id']))
+            self.plugin.log_debug("XDCC - listening on %s:%s for incoming DCC from %s" % (self.dcc.localaddress, str(self.dcc.localport), command['address']))
+            # try to signal readyness via priv msg and ctcp
+            connection.privmsg(self.botname, command['command'] + ' SEND "%s" %s %s %s %s' % (command['filename'], irc.client.ip_quad_to_numstr(self.external_ip), str(self.dcc.localport), str(command['size']), command['id']))
+            connection.ctcp(command['command'], self.botname, 'SEND "%s" %s %s %s %s' % (command['filename'], irc.client.ip_quad_to_numstr(self.external_ip), str(self.dcc.localport), str(command['size']), command['id']))
             
         else:
-            self.plugin.log_debug("XDCC - connecting to %s:%d" % (command['address'], command['port']))
+            self.plugin.log_debug("XDCC - connecting to %s:%s" % (command['address'], str(command['port'])))
             self.dcc = self.dcc_connect(command['address'], command['port'], "raw")
         
         self.plugin.log_debug('starting download...')
