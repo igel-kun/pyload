@@ -9,7 +9,7 @@ from ..internal.SimpleHoster import SimpleHoster
 class UpstoreNet(SimpleHoster):
     __name__ = "UpstoreNet"
     __type__ = "hoster"
-    __version__ = "0.16"
+    __version__ = "0.17"
     __status__ = "testing"
 
     __pattern__ = r'https?://(?:www\.)?(?:upstore\.net|upsto\.re)/(?P<ID>\w+)'
@@ -32,8 +32,9 @@ class UpstoreNet(SimpleHoster):
 
     URL_REPLACEMENTS = [(__pattern__ + ".*", r'https://upstore.net/\g<ID>')]
 
-    DL_LIMIT_PATTERN = r'Please wait .+? before downloading next'
+    ERROR_PATTERN = r'(?:Please|You should) wait .*? ?before downloading next'
     WAIT_PATTERN = r'var sec = (\d+)'
+    RECAPTCHA_KEY = "6LemftkSAAAAAJy5WVFbD9OrS7KHfLg5nUsDpTyj"
 
     COOKIES = [("upstore.net", "lang", "en")]
 
@@ -42,45 +43,41 @@ class UpstoreNet(SimpleHoster):
         post_data = {'hash': self.info['pattern']['ID'],
                      'free': 'Slow download'}
         self.data = self.load(pyfile.url, post=post_data)
+        self.check_errors()
 
         #: STAGE 2: solve captcha and wait
         #: First get the infos we need: self.captcha key and wait time
         m = re.search(self.WAIT_PATTERN, self.data)
         if m is None:
-            self.error(_("Wait pattern not found"))
+            self.error("Wait pattern not found")
 
-        #: prepare the waiting
-        wait_time = int(m.group(1))
-        self.set_wait(wait_time)
+        #: gotta wait before solving the captcha
+        self.wait(int(m.group(1)))
 
         #: then, handle the captcha
-        recaptcha = ReCaptcha(self.pyfile)
+        self.captcha = ReCaptcha(self.pyfile)
 
-        captcha_key = recaptcha.detect_key()
+        captcha_key = self.captcha.detect_key()
         if captcha_key is None:
-            self.fail(_("captcha key not found"))
-
-        self.captcha = recaptcha
+            self.log_warning(_("captcha key not found, using hardcoded key %s") % self.RECAPTCHA_KEY)
+            captcha_key = self.RECAPTCHA_KEY
+        elif captcha_key != self.RECAPTCHA_KEY:
+            self.log_warning(_("detected key differs from hardcoded one, please report this as a plugin bug"))
 
         post_data = {'hash': self.info['pattern']['ID'],
                      'free': 'Get download link'}
-        post_data['g-recaptcha-response'], _ = recaptcha.challenge(captcha_key)
-
-        #: then, do the waiting
-        self.wait()
+        post_data['g-recaptcha-response'], _ = self.captcha.challenge(captcha_key)
 
         self.data = self.load(pyfile.url, post=post_data)
 
         # check whether the captcha was wrong
-        if "Captcha check failed" in self.data:
+        if "check failed" in self.data:
             self.captcha.invalid()
-
         else:
             self.captcha.correct()
 
         # STAGE 3: get direct link or wait time
         self.check_errors()
-
         m = re.search(self.LINK_FREE_PATTERN, self.data)
         if m is not None:
             self.link = m.group(1)
