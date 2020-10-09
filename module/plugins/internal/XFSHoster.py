@@ -42,7 +42,7 @@ class XFSHoster(SimpleHoster):
     OFFLINE_PATTERN = r'>\s*\w+ (Not Found|file (was|has been) removed|no longer available)'
     TEMP_OFFLINE_PATTERN = r'>\s*\w+ server (is in )?(maintenance|maintainance)'
 
-    WAIT_PATTERN = r'<span id="countdown_str".*>(\d+)</span>|id="countdown" value=".*?(\d+).*?"'
+    WAIT_PATTERN = r'<span id="countdown_str".*>(\d+)|id="countdown" value=".*?(\d+)|wait (.*?) [un]*till?.*?download|class="seconds.*?>(\d+)</'
     PREMIUM_ONLY_PATTERN = r'>This file is available for Premium Users only'
     
     # forwards matching this pattern are not considered as links but as advancing in the interaction chain
@@ -107,7 +107,7 @@ class XFSHoster(SimpleHoster):
                                   redirect=False)
 
             if not "op=" in self.last_header.get('location', "op="):
-                if self.LOCAL_LOCATION is not None and search_pattern(self.LOCAL_LOCATION, self.last_header['location']) is not None:
+                if search_pattern(self.LOCAL_LOCATION, self.last_header['location']) is not None:
                     self.link = self.last_header.get('location')
                     break
 
