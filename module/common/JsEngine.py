@@ -25,62 +25,62 @@ import urllib
 from imp import find_module
 
 ENGINE = ""
-
+ENGINES = set()
 DEBUG = False
-JS = False
-PYV8 = False
-NODE = False
-RHINO = False
-JS2PY = False
 
-if not ENGINE:
+
+PRINT_COMMANDS = {'js':'print',
+        'pyv8':'print',
+        'rhino':'print',
+        'node':'console.log',
+        'js2py': ''}
+
+def call_external(command, extra_env = {}):
+    my_env = os.environ.copy()
+    my_env.update(extra_env)
+    out, err = subprocess.Popen(command, bufsize=-1, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=my_env).communicate()
+    return out.strip()
+
+def compute_42(command, print_cmd):
+    command.append(print_cmd + '(23+19)')
+    return call_external(command)
+
+
+
+if not ENGINES or DEBUG:
     try:
         import js2py
-        out = js2py.eval_js("(23+19).toString()")
+        out = js2py.eval_js("(23+19).toString()").strip()
 
         #integrity check
-        if out.strip() == "42":
-            ENGINE = "js2py"
-        JS2PY = True
+        if out == "42":
+            ENGINES.insert("js2py")
     except:
         pass
 
-if not ENGINE or DEBUG:
+if not ENGINES or DEBUG:
     try:
-        import subprocess
-
-        subprocess.Popen(["js", "-v"], bufsize=-1, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
-        p = subprocess.Popen(["js", "-e", "print(23+19)"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        out, err = p.communicate()
-        #integrity check
-        if out.strip() == "42":
-            ENGINE = "js"
-        JS = True
+        if compute_42(["js", "-e"], PRINT_COMMANDS['js']) == "42":
+            ENGINES.insert("js")
     except:
         pass
 
-if not ENGINE or DEBUG:
+
+if not ENGINES or DEBUG:
     try:
         find_module("PyV8")
-        ENGINE = "pyv8"
-        PYV8 = True
+        ENGINES.insert("pyv8")
     except:
         pass
 
-if not ENGINE or DEBUG:
+if not ENGINES or DEBUG:
     try:
-        import subprocess
-        subprocess.Popen(["node", "-v"], bufsize=-1, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
-        p = subprocess.Popen(["node", "-e", "console.log(23+19)"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        out, err = p.communicate()
-        #integrity check
-        if out.strip() == "42":
-            ENGINE = "node"
-        NODE = True
+        if compute_42(["js", "-e"], PRINT_COMMANDS['node']) == "42":
+            ENGINES.insert("node")
     except:
         pass
 
-if not ENGINE or DEBUG:
+if not ENGINES or DEBUG:
     try:
         path = "" #path where to find rhino
 
@@ -94,17 +94,15 @@ if not ENGINE or DEBUG:
         if not path:
             raise Exception
 
-        import subprocess
-
-        p = subprocess.Popen(["java", "-cp", path, "org.mozilla.javascript.tools.shell.Main", "-e", "print(23+19)"],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        out, err = p.communicate()
-        #integrity check
-        if out.strip() == "42":
-            ENGINE = "rhino"
-        RHINO = True
+        if compute_42(["java", "-cp", path, "org.mozilla.javascript.tools.shell.Main", "-e"], PRINT_COMMANDS['rhino']) == "42":
+            ENGINES.insert("rhino")
     except:
         pass
+
+for eng in ENGINES:
+    ENGINE = eng
+    break
+
 
 class JsEngine():
     def __init__(self):
@@ -112,11 +110,11 @@ class JsEngine():
         self.init = False
 
     def __nonzero__(self):
-        return False if not ENGINE else True
+        return False if not self.engine else True
 
     def eval(self, script):
         if not self.init:
-            if ENGINE == "pyv8" or (DEBUG and PYV8):
+            if self.engine == "pyv8" or (DEBUG and ('pyv8' in ENGINES)):
                 import PyV8
                 global PyV8
 
@@ -125,39 +123,39 @@ class JsEngine():
         if type(script) == unicode:
             script = script.encode("utf8")
 
-        if not ENGINE:
+        if not self.engine:
             raise Exception("No JS Engine")
 
         if not DEBUG:
-            if ENGINE == "pyv8":
+            if self.engine == "pyv8":
                 return self.eval_pyv8(script)
-            elif ENGINE == "js2py":
+            elif self.engine == "js2py":
                 return self.eval_js2py(script)
-            elif ENGINE == "js":
+            elif self.engine == "js":
                 return self.eval_js(script)
-            elif ENGINE == "node":
+            elif self.engine == "node":
                 return self.eval_node(script)
-            elif ENGINE == "rhino":
+            elif self.engine == "rhino":
                 return self.eval_rhino(script)
         else:
             results = []
-            if PYV8:
+            if 'pyv8' in ENGINES:
                 res = self.eval_pyv8(script)
                 print "PyV8:", res
                 results.append(res)
-            if JS2PY:
+            if 'js2py' in ENGINES:
                 res = self.eval_js2py(script)
                 print "js2py:", res
                 results.append(res)
-            if JS:
+            if 'js' in ENGINES:
                 res = self.eval_js(script)
                 print "JS:", res
                 results.append(res)
-            if NODE:
+            if 'node' in ENGINES:
                 res = self.eval_node(script)
                 print "NODE:", res
                 results.append(res)
-            if RHINO:
+            if 'rhino' in ENGINES:
                 res = self.eval_rhino(script)
                 print "Rhino:", res
                 results.append(res)
