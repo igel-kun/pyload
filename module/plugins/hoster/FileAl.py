@@ -23,8 +23,11 @@ class FileAl(XFSHoster):
     RECAPTCHA_PATTERN= r"g-recaptcha.*?sitekey=[\"']([^\"]*)"
     PREMIUM_ONLY_PATTERN  = r'(?:[Pp]remium Users only|can download files up to.*only)'
     LOCAL_LOCATION = r'check_ip'
+    PRE_CAPTCHA_PATTERN = r"confirm that you're not a robot"
+    INFO_PATTERN = r'You have requested.*https?://[^<]*?(?P<N>[^/<]*)</.*?\((?P<S>[0-9.]* [A-Z]?B)'
 
     def setup(self):
         self.multiDL = self.premium
         self.resume_download = True
+
 
