@@ -68,6 +68,7 @@ class HTTPDownload():
         self.m = pycurl.CurlMulti()
 
         # needed for speed calculation
+        self.average_span = 8
         self.lastArrived = []
         self.speeds = []
         self.lastSpeeds = [0 for x in range(self.average_span)]

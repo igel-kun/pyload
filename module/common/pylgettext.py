@@ -7,6 +7,8 @@ _searchdirs = None
 
 origfind = find
 
+_ = gettext
+
 def setpaths(pathlist):
     global _searchdirs
     if isinstance(pathlist, list):
