@@ -32,7 +32,7 @@ class FilejokerNet(XFSHoster):
     ERROR_PATTERN = r'Wrong Captcha|Session expired'
     PREMIUM_ONLY_PATTERN = 'Free Members can download files no bigger'
 
-    DL_LIMIT_PATTERN = r'Wait [\w ]+? to download for free.'
+    DL_LIMIT_PATTERN = r'(?:Wait [\w ]+? to download for free|download has not finished)'
 
     INFO_PATTERN = r'<div class="name-size"><span>(?P<N>.+?)</span> <p>\((?P<S>[\d.,]+) (?P<U>[\w^_]+)\)</p></div>'
     SIZE_REPLACEMENTS = [('Kb', 'KB'), ('Mb', 'MB'), ('Gb', 'GB')]
