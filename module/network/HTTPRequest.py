@@ -257,12 +257,12 @@ class HTTPRequest():
                 self.c.perform()
             except pycurl.error, e:
                 if e.args[0] == pycurl.E_SSL_CONNECT_ERROR:
-                    self.c.setopt(pycurl.SSLVERSION, 3)
+                    self.c.setopt(pycurl.SSLVERSION, pycurl.SSLVERSION_MAX_TLSv1_1)
                     try:
                         self.c.perform()
                     except pycurl.error, e:
                         if e.args[0] == pycurl.E_SSL_CONNECT_ERROR:
-                            self.c.setopt(pycurl.SSLVERSION, 2)
+                            self.c.setopt(pycurl.SSLVERSION, pycurl.SSLVERSION_MAX_TLSv1_0)
                             self.c.perform()
                         else:
                             if e.args[0] == pycurl.E_WRITE_ERROR and self.abort:  #: Ignore write error on abort
