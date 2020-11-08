@@ -348,7 +348,11 @@ class SimpleHoster(Hoster):
                     self.info['error'] = errmsg
                     self.log_warning(errmsg)
 
-                    wait_time = parse_time(errmsg)
+                    try:
+                        wait_time = parse_time(errmsg)
+                    except ValueError:
+                        wait_time = 3600
+
                     self.wait(wait_time, reconnect=wait_time > self.config.get('max_wait', 10) * 60)
                     self.restart(_("Download limit exceeded"))
 
