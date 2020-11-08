@@ -16,24 +16,25 @@ class ARD(SimpleHoster):
     __description__ = """ARD hoster plugin"""
     __license__     = "GPLv3"
     __authors__     = [("igel", "")]
-
+    __config__ = [("activated", "bool", "Activated", True),
+                  ("chk_filesize", "bool", "Check file size", True),
+                  ("max_wait", "int", "Reconnect if waiting time is greater than minutes", 10),
+                  ("max_quality", "int", "maximum width (in px) of video to download", 100000)]
 
     OFFLINE_PATTERN      = r'Seite nicht gefunden'
-    DOC_ID_PATTERN       = r'description.*?documentId=(\d+)'
-    LINK_PATTERN         = r'"clipUrl":"(.*?)"'
     NAME_PATTERN         = r'"clipTitle":"(?P<N>.*?)"'
-    API_URL              = 'www.ardmediathek.de/play/config/'
+    LINK_PATTERN         = r"http[^\"',]*mp4"
 
     def handle_free(self, pyfile):
-        m = re.search(self.DOC_ID_PATTERN, self.data)
-
-        if not m:
-            self.fail(_('Could not find necessary Document ID'))
-
-        doc_id = m.group(1)
-        self.log_debug('found document ID %s' % doc_id)
-
-        self.data = self.load(self.API_URL + doc_id, get={'displaytype':'pc'})
         self.grab_info()
-        super(ARD, self).handle_free(pyfile)
+        best_quality = 0
+        for i in re.finditer(self.LINK_PATTERN, self.data):
+            m = re.search("/([0-9]*)-[^/]*.mp4", i.group(0))
+            if m is not None:
+                quality = int(m.group(1))
+                # take the best quality below the given max quality
+                if  quality <= self.config.get("max_quality") and quality > best_quality:
+                    best_quality = quality
+                    self.link = i.group(0)
+                
 
