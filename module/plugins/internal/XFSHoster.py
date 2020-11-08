@@ -107,9 +107,12 @@ class XFSHoster(SimpleHoster):
                                   redirect=False)
 
             if not "op=" in self.last_header.get('location', "op="):
-                if search_pattern(self.LOCAL_LOCATION, self.last_header['location']) is not None:
+                if search_pattern(self.LOCAL_LOCATION, self.last_header['location']) is None:
                     self.link = self.last_header.get('location')
                     break
+                else:
+                    pyfile.url = self.last_header['location']
+                    self.debug('following redirect: ' + pyfile.url)
 
             m = search_pattern(self.LINK_PATTERN, self.data, flags=re.S)
             if m is not None:
@@ -148,7 +151,10 @@ class XFSHoster(SimpleHoster):
 
         action, inputs = self.parse_html_form('F1')
         if not inputs:
-            self.retry(msg=self.info.get('error') or _("TEXTAREA F1 not found"))
+            self.log_debug(self.data)
+            self.log_debug(str(self.last_header), trace=True)
+            self.fail(msg=self.info.get('error') or _("TEXTAREA F1 not found"))
+            #self.retry(msg=self.info.get('error') or _("TEXTAREA F1 not found"))
 
         self.log_debug(inputs)
 
@@ -183,7 +189,10 @@ class XFSHoster(SimpleHoster):
         if not inputs:
             action, inputs = self.parse_html_form('F1')
             if not inputs:
-                self.retry(msg=self.info.get('error') or _("TEXTAREA F1 not found"))
+                self.log_debug(self.data)
+                self.log_debug(str(self.last_header), trace=True)
+                self.fail(msg=self.info.get('error') or _("TEXTAREA F1 not found"))
+                #self.retry(msg=self.info.get('error') or _("TEXTAREA F1 not found"))
 
         self.log_debug(inputs)
 
@@ -204,7 +213,11 @@ class XFSHoster(SimpleHoster):
                     except (AttributeError, IndexError):
                         waitmsg = m.group(0).strip()
 
-                    wait_time = parse_time(waitmsg)
+                    try:
+                        wait_time = parse_time(waitmsg)
+                    except ValueError:
+                        wait_time = 3600 # wait 1h by default (if time cannot be parsed)
+
                     self.set_wait(wait_time)
                     if wait_time < self.config.get('max_wait', 10) * 60 or \
                             self.pyload.config.get('reconnect', 'activated') is False or \
