@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
 
-from module.plugins.internal.SimpleHoster import DeadHoster
+from module.plugins.internal.DeadHoster import DeadHoster
 
 
-class DepfileCom(SimpleHoster):
+class DepfileCom(DeadHoster):
     __name__ = "DepfileCom"
     __type__ = "hoster"
     __version__ = "0.02"
